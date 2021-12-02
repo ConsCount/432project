@@ -72,7 +72,6 @@ table(brca$HER2.Final.Status)
 table(brca$histological.type)
 ```
 
-
 ```{r}
 # sub is the dataset we will use for modeling 
 # all of the null values are removed 
@@ -88,7 +87,7 @@ dim(sub)
 # rs 1:604, cn 605:1464, mu 1465:1713, pp 1714:1936
 ```
 
-check correlation 
+## check correlation 
 ```{r}
 rs = sub[1:604] # the subset that only contains rs
 corr = round(cor(rs), 2) # correlation matrix 
@@ -105,8 +104,7 @@ dim(idx)
 names(idx) = c("i", "j", "corr")
 
 # remove highly-correlated variables 
-rmv = idx[idx$j %in% names(sort(table(idx$j), decreasing = T)[1:61]),]$i 
-rmv = unique(rmv)
+rmv = unique(idx[,1])
 length(rmv)
 
 rs = rs[,-rmv]
@@ -127,8 +125,7 @@ idx = idx[-1,]
 dim(idx)
 names(idx) = c("i", "j", "corr")
 
-rmv = idx[idx$j %in% names(sort(table(idx$j), decreasing = T)[1:683]),]$i
-rmv = unique(rmv)
+rmv = unique(idx[,1])
 length(rmv)
 
 cn = cn[,-rmv]
@@ -149,8 +146,7 @@ idx = idx[-1,]
 dim(idx)
 names(idx) = c("i", "j", "corr")
 
-rmv = idx[idx$j %in% names(sort(table(idx$j), decreasing = T)[1:10]),]$i
-rmv = unique(rmv)
+rmv = unique(idx[,1])
 length(rmv)
 # there is no multicollinearity within mu, so no variable is removed here 
 # mu = mu[,-rmv]
@@ -171,40 +167,99 @@ idx = idx[-1,]
 dim(idx)
 names(idx) = c("i", "j", "corr")
 
-rmv = idx[idx$j %in% names(sort(table(idx$j), decreasing = T)[1:683]),]$i
-rmv = unique(rmv)
+rmv = unique(idx[,1])
 length(rmv)
 
 pp = pp[,-rmv]
 ```
 
-
+## check outliers 
 ```{r}
-a = rs$rs_CLEC3A
-mean(a)
-sd(a)
-mean(a) + c(-1, 1) * 3 * sd(a)
-a[a < mean(a) - 3 * sd(a) | a > mean(a) + 3 * sd(a)]
+n_outlier = 0
+row_idx_rs = c()
+col_idx_rs = c()
+for (i in 1:ncol(rs)) {
+  col = rs[,i]
+  col = qnorm(rank(col) / (1 + length(col))) # normalize 
+  n_outlier = length(col[col < mean(col) - 3 * sd(col) | 
+                           col > mean(col) + 3 * sd(col)])
+  if (n_outlier > 0) {
+    col_idx_rs = c(col_idx_rs, i)
+    row_idx_rs = c(row_idx_rs, which(col %in% col[col < mean(col) - 3 * sd(col) | 
+                                              col > mean(col) + 3 * sd(col)]))
+  }
+}
+row_idx_rs = unique(row_idx_rs)
+length(row_idx_rs)
+length(col_idx_rs)
 ```
 
 ```{r}
 n_outlier = 0
-row_idx = c()
-for (i in 1:ncol(rs)) {
-  a = rs[,i]
-  n_outlier = length(a[a < mean(a) - 3 * sd(a) | a > mean(a) + 3 * sd(a)])
+row_idx_pp = c()
+col_idx_pp = c()
+for (i in 1:ncol(pp)) {
+  col = pp[,i]
+  col = qnorm(rank(col) / (1 + length(col))) # normalize 
+  n_outlier = length(col[col < mean(col) - 3 * sd(col) | col > mean(col) + 3 * sd(col)])
   if (n_outlier > 0) {
-    row_idx = c(row_idx, which(a %in% a[a < mean(a) - 4 * sd(a) | a > mean(a) + 4 * sd(a)]))
+    col_idx_pp = c(col_idx_pp, i)
+    row_idx_pp = c(row_idx_pp, which(col %in% col[col < mean(col) - 3 * sd(col) | 
+                                              col > mean(col) + 3 * sd(col)]))
   }
+}
+
+row_idx_pp = unique(row_idx_pp)
+length(row_idx_pp)
+length(col_idx_pp)
+```
+
+```{r}
+row_idx = unique(c(row_idx_rs, row_idx_pp))
+length(row_idx)
+```
+
+```{r}
+# columns with outliers are skewed (mostly right-skewed)
+for (i in col_idx_rs[1:20]) {
+  hist(rs[,i], main = names(rs)[i])
+}
+```
+
+```{r}
+# columns without outliers 
+for (i in 1:16) {
+  hist(rs[,i])
+}
+```
+
+```{r}
+for (i in col_idx_pp[1:20]) {
+  hist(pp[,i], main = names(pp)[i])
+}
+```
+
+```{r}
+# log transform rs and normalize pp 
+rs_transformed = rs
+pp_normalized = pp
+for (i in 1:ncol(rs)) {
+  rs_transformed[,i] = log(1 + rs[,i])
+}
+
+for (i in 1:ncol(pp)) {
+  pp_normalized[,i] = qnorm(rank(pp[,i]) / (1 + length(pp[,i])))
 }
 ```
 
 
 # PR Status (Modeling, SVM and random Forest) (est. 2-3 pages, pt.20)
 ```{r}
+# cleaned dataset with PR.status as response 
 y = as.factor(sub$PR.Status)
 y = ifelse(y == "Positive", 1, 0)
-sub2 = cbind(rs, cn, mu, pp, y) # cleaned dataset with PR.status as response 
+# sub2 = cbind(rs, cn, mu, pp, y) 
+sub2 = cbind(rs_transformed, cn, mu, pp_normalized, y)
 dim(sub2)
 ```
 
@@ -230,8 +285,10 @@ table("fitted" = svm.fit$fitted, "actual" = ytrain) # in-sample confusion matrix
 
 ```{r}
 pred = predict(svm.fit, newdata = Xtest)
-table("fitted" = pred, "actual" = ytest)
-(34 + 69) / (34 + 69 + 14 + 9)
+confusion_table = table("fitted" = pred, "actual" = ytest)
+confusion_table
+# (34 + 69) / (34 + 69 + 14 + 9)
+(confusion_table[1, 1] + confusion_table[2, 2]) / test_size
 ```
 
 ```{r}
@@ -255,8 +312,13 @@ rf.fit = randomForest(Xtrain, as.factor(ytrain),
 
 ```{r}
 pred = predict(rf.fit, Xtest)
-table("fitted" = pred, "actual" = ytest)
-(33 + 81) / (33 + 81 + 2 + 10)
+confusion_table = table("fitted" = pred, "actual" = ytest)
+confusion_table
+(confusion_table[1, 1] + confusion_table[2, 2]) / test_size
+```
+
+
+```{r}
 roc = prediction(as.numeric(pred), ytest)
 performance(roc, measure = "auc")@y.values[[1]]
 
