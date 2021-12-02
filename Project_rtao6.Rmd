@@ -1,0 +1,338 @@
+---
+title: "Project"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '2'
+  pdf_document:
+    toc: yes
+    toc_depth: 2
+---
+
+<style>
+body {
+text-align: justify}
+</style>
+
+```{css, echo=FALSE}
+.solution {
+background-color: #CCDDFF;
+}
+```
+
+\def\bx{\mathbf{x}}
+
+**Note: have not set seeds; have not split train and test datasets, have not finished data preprocessing**   
+
+# Project Description (est. 1 page, pt. 5)
+
+# Literature Review(est. 1 page, pt.10)
+
+# preprocessing and Summary statistics(est. 1 -2 pages, pt.10)
+- check multicollinearity 
+- check outliers (`rs` and `pp`)
+- check balance (`cn` and `mu`)
+
+# models that perform well on high-dimensional data
+- SVM 
+- Random Forest 
+- Lasso (?)
+- KNN regression
+
+```{r}
+brca = read.csv("brca_data_w_subtypes.csv")
+# head(brca)
+```
+
+```{r}
+dim(brca) # 705 rows, 1941 columns
+names(brca)[1937:1941] # outcomes 
+# 1936 covariates: 860 copy number variations (cn), 249 somatic mutations (mu), 604 gene expressions (rs), and 223 protein levels (pp)
+# order: rs 1:604, cn 605:1464, mu 1465:1713, pp 1714:1936
+
+brca = brca[,-1937] # discard `vital.status` 
+names(brca)[1937:1940]
+```
+
+```{r}
+# unique values of responses 
+unique(brca$PR.Status)
+unique(brca$ER.Status)
+unique(brca$HER2.Final.Status)
+unique(brca$histological.type)
+```
+
+```{r}
+# only use Negative and Positive for PR.status, ER.status, and HER2.Final.Status
+# PR.status and ER.status are highly correlated
+table(brca$PR.Status) 
+table(brca$ER.Status)
+table(brca$HER2.Final.Status)
+table(brca$histological.type)
+```
+
+
+```{r}
+# sub is the dataset we will use for modeling 
+# all of the null values are removed 
+sub = brca[(brca$PR.Status == "Positive" | brca$PR.Status == "Negative") & 
+           (brca$ER.Status == "Positive" | brca$ER.Status == "Negative") & 
+           (brca$HER2.Final.Status == "Positive" | 
+            brca$HER2.Final.Status == "Negative"),]
+dim(sub)
+```
+
+```{r}
+# the input variables have the indices below 
+# rs 1:604, cn 605:1464, mu 1465:1713, pp 1714:1936
+```
+
+check correlation 
+```{r}
+rs = sub[1:604] # the subset that only contains rs
+corr = round(cor(rs), 2) # correlation matrix 
+idx = data.frame(NA, NA, NA)
+for (i in 1:nrow(corr)) {
+  for (j in 1:nrow(corr)) {
+    if (abs(corr[i, j]) > 0.8 & i < j) {
+      idx[nrow(idx) + 1,] = c(i, j, corr[i, j])
+    }
+  }
+}
+idx = idx[-1,] # stores correlations that are greater than 0.8 -> multicollinearity 
+dim(idx)
+names(idx) = c("i", "j", "corr")
+
+# remove highly-correlated variables 
+rmv = idx[idx$j %in% names(sort(table(idx$j), decreasing = T)[1:61]),]$i 
+rmv = unique(rmv)
+length(rmv)
+
+rs = rs[,-rmv]
+```
+
+```{r}
+cn = sub[605:1464]
+corr = round(cor(cn), 2)
+idx = data.frame(NA, NA, NA)
+for (i in 1:nrow(corr)) {
+  for (j in 1:nrow(corr)) {
+    if (abs(corr[i, j]) > 0.8 & i < j) {
+      idx[nrow(idx) + 1,] = c(i, j, corr[i, j])
+    }
+  }
+}
+idx = idx[-1,]
+dim(idx)
+names(idx) = c("i", "j", "corr")
+
+rmv = idx[idx$j %in% names(sort(table(idx$j), decreasing = T)[1:683]),]$i
+rmv = unique(rmv)
+length(rmv)
+
+cn = cn[,-rmv]
+```
+
+```{r}
+mu = sub[1465:1713]
+corr = round(cor(mu), 2)
+idx = data.frame(NA, NA, NA)
+for (i in 1:nrow(corr)) {
+  for (j in 1:nrow(corr)) {
+    if (abs(corr[i, j]) > 0.8 & i < j) {
+      idx[nrow(idx) + 1,] = c(i, j, corr[i, j])
+    }
+  }
+}
+idx = idx[-1,]
+dim(idx)
+names(idx) = c("i", "j", "corr")
+
+rmv = idx[idx$j %in% names(sort(table(idx$j), decreasing = T)[1:10]),]$i
+rmv = unique(rmv)
+length(rmv)
+# there is no multicollinearity within mu, so no variable is removed here 
+# mu = mu[,-rmv]
+```
+
+```{r}
+pp = sub[1714:1936]
+corr = round(cor(pp), 2)
+idx = data.frame(NA, NA, NA)
+for (i in 1:nrow(corr)) {
+  for (j in 1:nrow(corr)) {
+    if (abs(corr[i, j]) > 0.8 & i < j) {
+      idx[nrow(idx) + 1,] = c(i, j, corr[i, j])
+    }
+  }
+}
+idx = idx[-1,]
+dim(idx)
+names(idx) = c("i", "j", "corr")
+
+rmv = idx[idx$j %in% names(sort(table(idx$j), decreasing = T)[1:683]),]$i
+rmv = unique(rmv)
+length(rmv)
+
+pp = pp[,-rmv]
+```
+
+# Histological Type(Modeling, SVM and random Forest) (est. 2-3 pages, pt.20)
+```{r}
+y = as.factor(sub$histological.type)
+y = ifelse(y == "infiltrating lobular carcinoma", 1, 0)
+sub2 = cbind(rs, cn, mu, pp, y) # cleaned dataset with histoological.type as response 
+dim(sub2)
+```
+
+```{r}
+set.seed(651978735) 
+n = dim(sub)[1]
+test_size = as.integer(0.25 * n)
+test_idx = sample(1:n, test_size) # 25% of the sample size 
+test_idx
+
+Xtest = sub2[test_idx, -1]
+Xtrain = sub2[-test_idx, -1]
+```
+
+
+```{r}
+library(e1071)
+svm.fit = svm(y ~., data=sub2, 
+              type="C-classification", kernel="linear", scale=F, cost=1)
+table("fitted" = svm.fit$fitted, "actual" = y)
+```
+
+```{r}
+library(ROCR)
+roc = prediction(as.numeric(svm.fit$fitted), sub2$y)
+performance(roc, measure = "auc")@y.values[[1]]
+
+perf = performance(roc, "tpr", "fpr") 
+plot(perf, colorize = T)
+```
+
+```{r}
+library(randomForest)
+rf.fit = randomForest(sub2[1:1098], as.factor(sub2$y), 
+                      ntree=500, 
+                      mtry=10, 
+                      nodesize=10, 
+                      samplesize=400, 
+                      importance=TRUE)
+```
+
+```{r}
+pred = predict(rf.fit, sub2[1:1098])
+table("fitted" = pred, "actual" = sub2$y)
+roc = prediction(as.numeric(pred), sub2$y)
+performance(roc, measure = "auc")@y.values[[1]]
+
+perf = performance(roc, "tpr", "fpr") 
+plot(perf, colorize = T)
+```
+
+see how SVM and Random Forest perform on the raw data `sub` 
+```{r}
+# test raw data
+test = randomForest(sub[1:1936], as.factor(sub2$y), 
+                      ntree=500, 
+                      mtry=10, 
+                      nodesize=10, 
+                      samplesize=400, 
+                      importance=TRUE)
+
+pred = predict(test, sub[1:1936])
+table("fitted" = pred, "actual" = sub2$y)
+roc = prediction(as.numeric(pred), sub2$y)
+performance(roc, measure = "auc")@y.values[[1]]
+
+perf = performance(roc, "tpr", "fpr") 
+plot(perf, colorize = T)
+```
+
+```{r}
+# test raw data 
+test = svm(as.factor(y) ~., data=sub[1:1936], 
+              type="C-classification", kernel="linear", scale=F, cost=1)
+table("fitted" = test$fitted, "actual" = y)
+roc = prediction(as.numeric(svm.fit$fitted), y)
+performance(roc, measure = "auc")@y.values[[1]]
+
+perf = performance(roc, "tpr", "fpr") 
+plot(perf, colorize = T)
+```
+
+# PR Status (to be decided) (est 2-3 pages, pt.20)
+```{r}
+y = as.factor(sub$PR.Status)
+y = ifelse(y == "Positive", 1, 0)
+sub3 = cbind(rs, cn, mu, pp, y) # cleaned dataset with PR.status as response 
+dim(sub2)
+```
+
+```{r}
+svm.fit = svm(y ~., data=sub3, 
+              type="C-classification", kernel="linear", scale=F, cost=1)
+table("fitted" = svm.fit$fitted, "actual" = y)
+
+# library(ROCR)
+roc = prediction(as.numeric(svm.fit$fitted), sub3$y)
+performance(roc, measure = "auc")@y.values[[1]]
+
+perf = performance(roc, "tpr", "fpr") 
+plot(perf, colorize = T)
+```
+
+# Variable Selection for All Outcomes (random forest?) (est. 2-3 pages. pt.20)
+
+Using Random Forest, select the most important 50 variables, and make predictions based on these variables. 
+```{r}
+impt = importance(rf.fit)[order(importance(rf.fit)[,3], decreasing=TRUE),][1:50,]
+vars = rownames(impt)
+```
+
+```{r}
+# sub4 is the cleaned dataset with all four response variables
+sub4 = subset(sub, select = vars)
+sub4 = cbind(sub4, sub[1937:1940])
+sub4$PR.Status = as.factor(sub4$PR.Status)
+sub4$histological.type = as.factor(sub4$histological.type)
+sub4$ER.Status = as.factor(sub4$ER.Status)
+sub4$HER2.Final.Status = as.factor(sub4$HER2.Final.Status)
+```
+
+```{r}
+X = sub4[1:50] # input variables 
+svm.fit = svm(sub4$ER.Status ~., data=X, 
+              type="C-classification", kernel="linear", scale=F, cost=1)
+table("fitted" = svm.fit$fitted, "actual" = y)
+
+# library(ROCR)
+roc = prediction(as.numeric(svm.fit$fitted), sub4$ER.Status)
+performance(roc, measure = "auc")@y.values[[1]]
+
+perf = performance(roc, "tpr", "fpr") 
+plot(perf, colorize = T)
+```
+
+```{r}
+rf.fit = randomForest(X, sub4$HER2.Final.Status, 
+                      ntree=500, 
+                      mtry=7, 
+                      nodesize=10, 
+                      samplesize=400, 
+                      importance=TRUE)
+
+pred = predict(rf.fit, X)
+table("fitted" = pred, "actual" = sub4$HER2.Final.Status)
+roc = prediction(as.numeric(pred), sub4$HER2.Final.Status)
+performance(roc, measure = "auc")@y.values[[1]]
+
+perf = performance(roc, "tpr", "fpr") 
+plot(perf, colorize = T)
+```
+
+
