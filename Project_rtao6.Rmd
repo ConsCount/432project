@@ -178,8 +178,29 @@ length(rmv)
 pp = pp[,-rmv]
 ```
 
-# PR Status (Modeling, SVM and random Forest) (est. 2-3 pages, pt.20)
 
+```{r}
+a = rs$rs_CLEC3A
+mean(a)
+sd(a)
+mean(a) + c(-1, 1) * 3 * sd(a)
+a[a < mean(a) - 3 * sd(a) | a > mean(a) + 3 * sd(a)]
+```
+
+```{r}
+n_outlier = 0
+row_idx = c()
+for (i in 1:ncol(rs)) {
+  a = rs[,i]
+  n_outlier = length(a[a < mean(a) - 3 * sd(a) | a > mean(a) + 3 * sd(a)])
+  if (n_outlier > 0) {
+    row_idx = c(row_idx, which(a %in% a[a < mean(a) - 4 * sd(a) | a > mean(a) + 4 * sd(a)]))
+  }
+}
+```
+
+
+# PR Status (Modeling, SVM and random Forest) (est. 2-3 pages, pt.20)
 ```{r}
 y = as.factor(sub$PR.Status)
 y = ifelse(y == "Positive", 1, 0)
@@ -200,7 +221,6 @@ ytest = sub2[test_idx, ncol(sub2)]
 ytrain = sub2[-test_idx, ncol(sub2)]
 ```
 
-
 ```{r}
 library(e1071)
 svm.fit = svm(ytrain ~., data=Xtrain, 
@@ -213,7 +233,6 @@ pred = predict(svm.fit, newdata = Xtest)
 table("fitted" = pred, "actual" = ytest)
 (34 + 69) / (34 + 69 + 14 + 9)
 ```
-
 
 ```{r}
 library(ROCR)
@@ -245,36 +264,6 @@ perf = performance(roc, "tpr", "fpr")
 plot(perf, colorize = T)
 ```
 
-see how SVM and Random Forest perform on the raw data `sub` 
-```{r}
-# test raw data
-test = randomForest(sub[1:1936], as.factor(sub2$y), 
-                      ntree=500, 
-                      mtry=10, 
-                      nodesize=10, 
-                      samplesize=400, 
-                      importance=TRUE)
-
-pred = predict(test, sub[1:1936])
-table("fitted" = pred, "actual" = sub2$y)
-roc = prediction(as.numeric(pred), sub2$y)
-performance(roc, measure = "auc")@y.values[[1]]
-
-perf = performance(roc, "tpr", "fpr") 
-plot(perf, colorize = T)
-```
-
-```{r}
-# test raw data 
-test = svm(as.factor(y) ~., data=sub[1:1936], 
-              type="C-classification", kernel="linear", scale=F, cost=1)
-table("fitted" = test$fitted, "actual" = y)
-roc = prediction(as.numeric(svm.fit$fitted), y)
-performance(roc, measure = "auc")@y.values[[1]]
-
-perf = performance(roc, "tpr", "fpr") 
-plot(perf, colorize = T)
-```
 
 # Histological Type (to be decided) (est 2-3 pages, pt.20)
 ```{r}
@@ -334,13 +323,24 @@ sub4$HER2.Final.Status = as.factor(sub4$HER2.Final.Status)
 ```
 
 ```{r}
-X = sub4[1:50] # input variables 
-svm.fit = svm(sub4$ER.Status ~., data=X, 
-              type="C-classification", kernel="linear", scale=F, cost=1)
-table("fitted" = svm.fit$fitted, "actual" = y)
+Xtest = sub4[test_idx, 1:50]
+Xtrain = sub4[-test_idx, 1:50]
+```
 
+```{r}
+ytest = sub4$ER.Status[test_idx]
+ytrain = sub4$ER.Status[-test_idx]
+svm.fit = svm(ytrain ~., data=Xtrain, 
+              type="C-classification", kernel="linear", scale=F, cost=1)
+table("fitted" = svm.fit$fitted, "actual" = ytrain)
+pred = predict(svm.fit, newdata = Xtest)
+table("fitted" = pred, "actual" = ytest)
+```
+
+
+```{r}
 # library(ROCR)
-roc = prediction(as.numeric(svm.fit$fitted), sub4$ER.Status)
+roc = prediction(as.numeric(pred), ytest)
 performance(roc, measure = "auc")@y.values[[1]]
 
 perf = performance(roc, "tpr", "fpr") 
@@ -348,16 +348,16 @@ plot(perf, colorize = T)
 ```
 
 ```{r}
-rf.fit = randomForest(X, sub4$HER2.Final.Status, 
+rf.fit = randomForest(Xtrain, ytrain, 
                       ntree=500, 
                       mtry=7, 
                       nodesize=10, 
                       samplesize=400, 
                       importance=TRUE)
 
-pred = predict(rf.fit, X)
-table("fitted" = pred, "actual" = sub4$HER2.Final.Status)
-roc = prediction(as.numeric(pred), sub4$HER2.Final.Status)
+pred = predict(rf.fit, Xtest)
+table("fitted" = pred, "actual" = ytest)
+roc = prediction(as.numeric(pred), ytest)
 performance(roc, measure = "auc")@y.values[[1]]
 
 perf = performance(roc, "tpr", "fpr") 
