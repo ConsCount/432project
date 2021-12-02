@@ -178,11 +178,12 @@ length(rmv)
 pp = pp[,-rmv]
 ```
 
-# Histological Type(Modeling, SVM and random Forest) (est. 2-3 pages, pt.20)
+# PR Status (Modeling, SVM and random Forest) (est. 2-3 pages, pt.20)
+
 ```{r}
-y = as.factor(sub$histological.type)
-y = ifelse(y == "infiltrating lobular carcinoma", 1, 0)
-sub2 = cbind(rs, cn, mu, pp, y) # cleaned dataset with histoological.type as response 
+y = as.factor(sub$PR.Status)
+y = ifelse(y == "Positive", 1, 0)
+sub2 = cbind(rs, cn, mu, pp, y) # cleaned dataset with PR.status as response 
 dim(sub2)
 ```
 
@@ -191,23 +192,32 @@ set.seed(651978735)
 n = dim(sub)[1]
 test_size = as.integer(0.25 * n)
 test_idx = sample(1:n, test_size) # 25% of the sample size 
-test_idx
 
-Xtest = sub2[test_idx, -1]
-Xtrain = sub2[-test_idx, -1]
+Xtest = sub2[test_idx, -ncol(sub2)]
+Xtrain = sub2[-test_idx, -ncol(sub2)]
+
+ytest = sub2[test_idx, ncol(sub2)]
+ytrain = sub2[-test_idx, ncol(sub2)]
 ```
 
 
 ```{r}
 library(e1071)
-svm.fit = svm(y ~., data=sub2, 
+svm.fit = svm(ytrain ~., data=Xtrain, 
               type="C-classification", kernel="linear", scale=F, cost=1)
-table("fitted" = svm.fit$fitted, "actual" = y)
+table("fitted" = svm.fit$fitted, "actual" = ytrain) # in-sample confusion matrix 
 ```
 
 ```{r}
+pred = predict(svm.fit, newdata = Xtest)
+table("fitted" = pred, "actual" = ytest)
+(34 + 69) / (34 + 69 + 14 + 9)
+```
+
+
+```{r}
 library(ROCR)
-roc = prediction(as.numeric(svm.fit$fitted), sub2$y)
+roc = prediction(as.numeric(pred), ytest)
 performance(roc, measure = "auc")@y.values[[1]]
 
 perf = performance(roc, "tpr", "fpr") 
@@ -216,7 +226,7 @@ plot(perf, colorize = T)
 
 ```{r}
 library(randomForest)
-rf.fit = randomForest(sub2[1:1098], as.factor(sub2$y), 
+rf.fit = randomForest(Xtrain, as.factor(ytrain), 
                       ntree=500, 
                       mtry=10, 
                       nodesize=10, 
@@ -225,9 +235,10 @@ rf.fit = randomForest(sub2[1:1098], as.factor(sub2$y),
 ```
 
 ```{r}
-pred = predict(rf.fit, sub2[1:1098])
-table("fitted" = pred, "actual" = sub2$y)
-roc = prediction(as.numeric(pred), sub2$y)
+pred = predict(rf.fit, Xtest)
+table("fitted" = pred, "actual" = ytest)
+(33 + 81) / (33 + 81 + 2 + 10)
+roc = prediction(as.numeric(pred), ytest)
 performance(roc, measure = "auc")@y.values[[1]]
 
 perf = performance(roc, "tpr", "fpr") 
@@ -265,21 +276,39 @@ perf = performance(roc, "tpr", "fpr")
 plot(perf, colorize = T)
 ```
 
-# PR Status (to be decided) (est 2-3 pages, pt.20)
+# Histological Type (to be decided) (est 2-3 pages, pt.20)
 ```{r}
-y = as.factor(sub$PR.Status)
-y = ifelse(y == "Positive", 1, 0)
+y = as.factor(sub$histological.type)
+y = ifelse(y == "infiltrating lobular carcinoma", 1, 0)
 sub3 = cbind(rs, cn, mu, pp, y) # cleaned dataset with PR.status as response 
-dim(sub2)
+dim(sub3)
 ```
 
 ```{r}
-svm.fit = svm(y ~., data=sub3, 
-              type="C-classification", kernel="linear", scale=F, cost=1)
-table("fitted" = svm.fit$fitted, "actual" = y)
+set.seed(651978735) 
+n = dim(sub)[1]
+test_size = as.integer(0.25 * n)
+test_idx = sample(1:n, test_size) # 25% of the sample size 
 
+Xtest = sub3[test_idx, -ncol(sub3)]
+Xtrain = sub3[-test_idx, -ncol(sub3)]
+
+ytest = sub3[test_idx, ncol(sub3)]
+ytrain = sub3[-test_idx, ncol(sub3)]
+```
+
+```{r}
+svm.fit = svm(ytrain ~., data=Xtrain, 
+              type="C-classification", kernel="linear", scale=F, cost=1)
+table("fitted" = svm.fit$fitted, "actual" = ytrain)
+
+pred = predict(svm.fit, newdata = Xtest)
+table("fitted" = pred, "actual" = ytest)
+```
+
+```{r}
 # library(ROCR)
-roc = prediction(as.numeric(svm.fit$fitted), sub3$y)
+roc = prediction(as.numeric(pred), ytest)
 performance(roc, measure = "auc")@y.values[[1]]
 
 perf = performance(roc, "tpr", "fpr") 
