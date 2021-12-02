@@ -265,7 +265,7 @@ plot(perf, colorize = T)
 ```
 
 
-# Histological Type (to be decided) (est 2-3 pages, pt.20)
+# Histological Type (hcluster and knn regression) (est 2-3 pages, pt.20)
 ```{r}
 y = as.factor(sub$histological.type)
 y = ifelse(y == "infiltrating lobular carcinoma", 1, 0)
