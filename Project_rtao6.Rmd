@@ -82,7 +82,7 @@ sub = brca[(brca$PR.Status == "Positive" | brca$PR.Status == "Negative") &
 dim(sub)
 ```
 
-```{r}
+```{r, include=False}
 # the input variables have the indices below 
 # rs 1:604, cn 605:1464, mu 1465:1713, pp 1714:1936
 ```
