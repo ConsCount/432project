@@ -266,14 +266,14 @@ plot(perf, colorize = T)
 
 
 # Histological Type (hcluster and knn regression) (est 2-3 pages, pt.20)
-```{r}
+```{r some-processing}
 y = as.factor(sub$histological.type)
 y = ifelse(y == "infiltrating lobular carcinoma", 1, 0)
 sub3 = cbind(rs, cn, mu, pp, y) # cleaned dataset with PR.status as response 
 dim(sub3)
 ```
 
-```{r}
+```{r split-train-test-data}
 set.seed(651978735) 
 n = dim(sub)[1]
 test_size = as.integer(0.25 * n)
@@ -286,22 +286,16 @@ ytest = sub3[test_idx, ncol(sub3)]
 ytrain = sub3[-test_idx, ncol(sub3)]
 ```
 
-```{r}
-svm.fit = svm(ytrain ~., data=Xtrain, 
-              type="C-classification", kernel="linear", scale=F, cost=1)
-table("fitted" = svm.fit$fitted, "actual" = ytrain)
+```{r perform knn-regression}
 
-pred = predict(svm.fit, newdata = Xtest)
-table("fitted" = pred, "actual" = ytest)
 ```
 
-```{r}
-# library(ROCR)
-roc = prediction(as.numeric(pred), ytest)
-performance(roc, measure = "auc")@y.values[[1]]
-
-perf = performance(roc, "tpr", "fpr") 
-plot(perf, colorize = T)
+```{r perform kmean}
+sub4 = sub3[,-1099]
+kmeanfit <- kmeans(sub4, 2)
+table((kmeanfit$cluster - 1),sub3$y)
+acc = (394 + 2)/ nrow(sub4)
+acc
 ```
 
 # Variable Selection for All Outcomes (random forest?) (est. 2-3 pages. pt.20)
