@@ -1,13 +1,13 @@
 ---
 title: "Project"
 output:
+  pdf_document:
+    toc: yes
+    toc_depth: 2
   html_document:
     df_print: paged
     toc: yes
     toc_depth: '2'
-  pdf_document:
-    toc: yes
-    toc_depth: 2
 ---
 
 <style>
@@ -21,49 +21,43 @@ background-color: #CCDDFF;
 }
 ```
 
-\def\bx{\mathbf{x}}
-
-**Note: have not set seeds; have not split train and test datasets, have not finished data preprocessing**   
+**Note: have not finished data preprocessing**   
 
 # Project Description (est. 1 page, pt. 5)
 
 # Literature Review(est. 1 page, pt.10)
 
-# preprocessing and Summary statistics(est. 1 -2 pages, pt.10)
-- check multicollinearity 
-- check outliers (`rs` and `pp`)
-- check balance (`cn` and `mu`)
+# Summary Statistics and Data Preprocessing (est. 1 -2 pages, pt.10)
 
-# models that perform well on high-dimensional data
-- SVM 
-- Random Forest 
-- Lasso (?)
-- KNN regression
+## Data Overview  
+The dataset has 705 observations and 1941 features (1936 predictors and 5 outcomes). There are four different kinds of predictors: `rs` (gene expression), `cn` (copy number variations), `mu` (mutations), and `pp` (protein levels). Among them, `rs` and `pp` are continuous variables, and `cn` and `mu` are categorical variables. 
 
-```{r}
+```{r load data, include=FALSE}
 brca = read.csv("brca_data_w_subtypes.csv")
-# head(brca)
 ```
 
-```{r}
+```{r, include=FALSE}
 dim(brca) # 705 rows, 1941 columns
 names(brca)[1937:1941] # outcomes 
 # 1936 covariates: 860 copy number variations (cn), 249 somatic mutations (mu), 604 gene expressions (rs), and 223 protein levels (pp)
-# order: rs 1:604, cn 605:1464, mu 1465:1713, pp 1714:1936
+```
 
+```{r, include=FALSE}
 brca = brca[,-1937] # discard `vital.status` 
 names(brca)[1937:1940]
 ```
 
-```{r}
-# unique values of responses 
-unique(brca$PR.Status)
-unique(brca$ER.Status)
-unique(brca$HER2.Final.Status)
-unique(brca$histological.type)
+```{r, echo=FALSE, fig.show="hold", fig.align="center", out.width="23%"}
+hist(brca$rs_CLEC3A, main="Histogram of rs_CLEC3A")
+hist(brca$cn_A2ML1, main="Histogram of cn_A2ML1")
+hist(brca$mu_ABCA12, main="Histogram of mu_ABCA12")
+hist(brca$pp_A.Raf, main="pp_A.Raf")
 ```
 
-```{r}
+## Remove Missing Values
+According to the instruction, we dropped `vital.status`, and we only considered each response variable as a binary variable. Therefore, we treated the observations that had other outcomes as missing values and removed them from our dataset. 
+
+```{r, include=FALSE}
 # only use Negative and Positive for PR.status, ER.status, and HER2.Final.Status
 # PR.status and ER.status are highly correlated
 table(brca$PR.Status) 
@@ -72,10 +66,9 @@ table(brca$HER2.Final.Status)
 table(brca$histological.type)
 ```
 
-
+Then the dataset `sub` had 507 observations and 1940 features. 
 ```{r}
-# sub is the dataset we will use for modeling 
-# all of the null values are removed 
+# sub is the dataset containing no missing values 
 sub = brca[(brca$PR.Status == "Positive" | brca$PR.Status == "Negative") & 
            (brca$ER.Status == "Positive" | brca$ER.Status == "Negative") & 
            (brca$HER2.Final.Status == "Positive" | 
@@ -83,13 +76,19 @@ sub = brca[(brca$PR.Status == "Positive" | brca$PR.Status == "Negative") &
 dim(sub)
 ```
 
-```{r}
+```{r, include=FALSE}
 # the input variables have the indices below 
 # rs 1:604, cn 605:1464, mu 1465:1713, pp 1714:1936
 ```
 
-check correlation 
-```{r}
+## Deal with Multicollinearity 
+One of the noticeable characteristics of the data is its high dimensionality. There are 1936 predictors, almost four times as many as there are observations. Therefore, it is essential to check correlation.   
+
+Since there are four kinds of predictors, it is unlikely that two variables that belong to different kinds would be highly correlated. Also, to reduce the computational cost, we split the data into four subsets: `rs`, `cn`, `mu`, and `pp`, each of which contained only ond kind of predictors.  
+
+Then, we created the correlation matrix for each subset, and extracted variables that are highly-correlated with at least one other variable. Take `rs` as an example. The dataframe `idx` stores all matrix indices of highly-correlated variables and the corresponding correlation coefficients. If the i-th variable is highly-correlated with the j-th variable, then we only need one of them. Thus, we removed all variables with indices `i`. For `rs`, 94 predictors were removed. We applied the same process to the other three subsets. In total, 882 predictors were removed. There are 1059 predictors remained. 
+
+```{r, include=FALSE}
 rs = sub[1:604] # the subset that only contains rs
 corr = round(cor(rs), 2) # correlation matrix 
 idx = data.frame(NA, NA, NA)
@@ -101,18 +100,19 @@ for (i in 1:nrow(corr)) {
   }
 }
 idx = idx[-1,] # stores correlations that are greater than 0.8 -> multicollinearity 
-dim(idx)
-names(idx) = c("i", "j", "corr")
-
-# remove highly-correlated variables 
-rmv = idx[idx$j %in% names(sort(table(idx$j), decreasing = T)[1:61]),]$i 
-rmv = unique(rmv)
-length(rmv)
-
-rs = rs[,-rmv]
+# dim(idx)
 ```
 
 ```{r}
+names(idx) = c("i", "j", "corr")
+idx[1:3,]
+# remove highly-correlated variables 
+rmv = unique(idx[,1])
+length(rmv)
+rs = rs[,-rmv]
+```
+
+```{r, include=FALSE}
 cn = sub[605:1464]
 corr = round(cor(cn), 2)
 idx = data.frame(NA, NA, NA)
@@ -127,14 +127,13 @@ idx = idx[-1,]
 dim(idx)
 names(idx) = c("i", "j", "corr")
 
-rmv = idx[idx$j %in% names(sort(table(idx$j), decreasing = T)[1:683]),]$i
-rmv = unique(rmv)
+rmv = unique(idx[,1])
 length(rmv)
 
 cn = cn[,-rmv]
 ```
 
-```{r}
+```{r, include=FALSE}
 mu = sub[1465:1713]
 corr = round(cor(mu), 2)
 idx = data.frame(NA, NA, NA)
@@ -149,14 +148,13 @@ idx = idx[-1,]
 dim(idx)
 names(idx) = c("i", "j", "corr")
 
-rmv = idx[idx$j %in% names(sort(table(idx$j), decreasing = T)[1:10]),]$i
-rmv = unique(rmv)
+rmv = unique(idx[,1])
 length(rmv)
 # there is no multicollinearity within mu, so no variable is removed here 
 # mu = mu[,-rmv]
 ```
 
-```{r}
+```{r, include=FALSE}
 pp = sub[1714:1936]
 corr = round(cor(pp), 2)
 idx = data.frame(NA, NA, NA)
@@ -171,40 +169,126 @@ idx = idx[-1,]
 dim(idx)
 names(idx) = c("i", "j", "corr")
 
-rmv = idx[idx$j %in% names(sort(table(idx$j), decreasing = T)[1:683]),]$i
-rmv = unique(rmv)
+rmv = unique(idx[,1])
 length(rmv)
 
 pp = pp[,-rmv]
 ```
 
+## Continuous Predictors 
+As mentioned before, `rs` and `pp` are continuous variables, so we should examine if there are any outliers. We first normalized the variable, and stored row and column indices if the data point was three standard deviations away from the variable mean. For the two subsets, `rs` had 100 outliers, and `pp` had no outlier.   
 
-```{r}
-a = rs$rs_CLEC3A
-mean(a)
-sd(a)
-mean(a) + c(-1, 1) * 3 * sd(a)
-a[a < mean(a) - 3 * sd(a) | a > mean(a) + 3 * sd(a)]
+We further looked into `rs` predictors that included outliers, and we found the vast majority of them had a long tail, mostly right and some left. In addition, a number of `rs` predictors that did not contain outliers also had a non-standard distribution. As a result, a log transformation of `rs` predictors would be beneficial.  
+
+```{r, include=FALSE}
+n_outlier = 0
+row_idx_rs = c()
+col_idx_rs = c()
+for (i in 1:ncol(rs)) {
+  col = rs[,i]
+  col = qnorm(rank(col) / (1 + length(col))) # normalize 
+  n_outlier = length(col[col < mean(col) - 3 * sd(col) | 
+                           col > mean(col) + 3 * sd(col)])
+  if (n_outlier > 0) {
+    col_idx_rs = c(col_idx_rs, i)
+    row_idx_rs = c(row_idx_rs, which(col %in% col[col < mean(col) - 3 * sd(col) | 
+                                              col > mean(col) + 3 * sd(col)]))
+  }
+}
+row_idx_rs = unique(row_idx_rs)
+length(row_idx_rs)
+length(col_idx_rs)
 ```
 
-```{r}
+```{r, include=FALSE}
 n_outlier = 0
-row_idx = c()
-for (i in 1:ncol(rs)) {
-  a = rs[,i]
-  n_outlier = length(a[a < mean(a) - 3 * sd(a) | a > mean(a) + 3 * sd(a)])
+row_idx_pp = c()
+col_idx_pp = c()
+
+for (i in 1:ncol(pp)) {
+  col = pp[,i]
+  col = qnorm(rank(col) / (1 + length(col))) # normalize 
+  n_outlier = length(col[col < mean(col) - 3 * sd(col) | col > mean(col) + 3 * sd(col)])
   if (n_outlier > 0) {
-    row_idx = c(row_idx, which(a %in% a[a < mean(a) - 4 * sd(a) | a > mean(a) + 4 * sd(a)]))
+    col_idx_pp = c(col_idx_pp, i)
+    row_idx_pp = c(row_idx_pp, which(col %in% col[col < mean(col) - 3 * sd(col) | 
+                                              col > mean(col) + 3 * sd(col)]))
   }
+}
+
+row_idx_pp = unique(row_idx_pp)
+length(row_idx_pp)
+length(col_idx_pp)
+```
+
+```{r, include=FALSE}
+row_idx = unique(c(row_idx_rs, row_idx_pp))
+length(row_idx)
+```
+
+```{r, include=FALSE}
+# columns with outliers are skewed (mostly right-skewed)
+# for (i in col_idx_rs[1:20]) {
+#   hist(rs[,i], main = names(rs)[i])
+# }
+```
+
+```{r, echo=FALSE, fig.show="hold", fig.align="center", out.width="30%"}
+# outlier example 
+hist(rs[,col_idx_rs[1]], 
+     main = paste("right-skewed example:", names(rs)[col_idx_rs[1]]))
+
+# no outlier example 
+hist(rs[,1], 
+     main = paste("right-skewed example (no outlier):", names(rs)[1]))
+hist(rs[,9], 
+     main = paste("two mode example (no outlier):", names(rs)[9]))
+```
+
+```{r, include=FALSE}
+# columns without outliers 
+# for (i in 1:16) {
+#   hist(rs[,i])
+# }
+```
+
+Unlike `rs`, `pp` variables were distributed quite normally. However, many of the variables would contain outliers without normalization. Therefore, we normalized `pp` variables. 
+
+```{r, include=FALSE}
+# log transform rs and normalize pp 
+rs_transformed = rs
+pp_normalized = pp
+for (i in 1:ncol(rs)) {
+  rs_transformed[,i] = log(1 + rs[,i])
+}
+
+for (i in 1:ncol(pp)) {
+  pp_normalized[,i] = qnorm(rank(pp[,i]) / (1 + length(pp[,i])))
 }
 ```
 
+```{r, echo=FALSE, fig.show="hold", fig.align="center", out.width="40%"}
+hist(pp[,1], 
+     main = paste("Before Normalization", names(pp)[1]))
+hist(pp_normalized[,1], 
+     main = paste("After Normalization", names(pp_normalized)[1]))
+```
+
+## Categorical Predictors 
+
+# models that perform well on high-dimensional data
+- SVM 
+- Random Forest 
+- Lasso (?)
+- KNN regression
 
 # PR Status (Modeling, SVM and random Forest) (est. 2-3 pages, pt.20)
 ```{r}
+# cleaned dataset with PR.status as response 
 y = as.factor(sub$PR.Status)
 y = ifelse(y == "Positive", 1, 0)
-sub2 = cbind(rs, cn, mu, pp, y) # cleaned dataset with PR.status as response 
+# sub2 = cbind(rs, cn, mu, pp, y) 
+sub2 = cbind(rs_transformed, cn, mu, pp_normalized, y)
 dim(sub2)
 ```
 
@@ -230,8 +314,10 @@ table("fitted" = svm.fit$fitted, "actual" = ytrain) # in-sample confusion matrix
 
 ```{r}
 pred = predict(svm.fit, newdata = Xtest)
-table("fitted" = pred, "actual" = ytest)
-(34 + 69) / (34 + 69 + 14 + 9)
+confusion_table = table("fitted" = pred, "actual" = ytest)
+confusion_table
+# (34 + 69) / (34 + 69 + 14 + 9)
+(confusion_table[1, 1] + confusion_table[2, 2]) / test_size
 ```
 
 ```{r}
@@ -255,8 +341,13 @@ rf.fit = randomForest(Xtrain, as.factor(ytrain),
 
 ```{r}
 pred = predict(rf.fit, Xtest)
-table("fitted" = pred, "actual" = ytest)
-(33 + 81) / (33 + 81 + 2 + 10)
+confusion_table = table("fitted" = pred, "actual" = ytest)
+confusion_table
+(confusion_table[1, 1] + confusion_table[2, 2]) / test_size
+```
+
+
+```{r}
 roc = prediction(as.numeric(pred), ytest)
 performance(roc, measure = "auc")@y.values[[1]]
 
