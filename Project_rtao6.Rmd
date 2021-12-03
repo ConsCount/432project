@@ -361,7 +361,6 @@ plot(perf, colorize = T)
 y = as.factor(sub$histological.type)
 y = ifelse(y == "infiltrating lobular carcinoma", 1, 0)
 sub3 = cbind(rs, cn, mu, pp, y) # cleaned dataset with PR.status as response 
-dim(sub3)
 ```
 
 ```{r split-train-test-data}
@@ -377,7 +376,8 @@ ytest = sub3[test_idx, ncol(sub3)]
 ytrain = sub3[-test_idx, ncol(sub3)]
 ```
 
-```{r perform knn-regression}
+```{r logistic regression}
+
 
 ```
 
