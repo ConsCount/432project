@@ -289,13 +289,6 @@ for (i in 1:10) {
 }
 ```
 
-
-# models that perform well on high-dimensional data
-- SVM 
-- Random Forest 
-- Lasso (?)
-- KNN regression
-
 # Modeling `PR Status` (est. 2-3 pages, pt.20)
 
 Before modeling, we split the train and test datasets. We used 25% of the samples (126) for testing and 75% of the samples for trianing (381). 
@@ -334,7 +327,7 @@ As the confusion matrix showed, the in-sample accuracy was 1.0, which implies th
 library(e1071)
 svm.fit = svm(ytrain ~., data=Xtrain, 
               type="C-classification", kernel="linear", scale=F, cost=1)
-table("fitted" = svm.fit$fitted, "actual" = ytrain) # in-sample confusion matrix 
+table("predicted" = svm.fit$fitted, "actual" = ytrain) # in-sample confusion matrix 
 ```
 
 Then we constructed two grids of tuning parameters for both linear and radial kernels, and we used 5-fold cross-validation to tune the parameters and to determine which kernel was better.  
@@ -373,7 +366,7 @@ svm.radial$results
 We made predictions for the test data, and printed the confusion table below. The accuracy was 0.9048. Thus, the linear SVM performed quite well. 
 ```{r, echo=FALSE}
 pred = predict(svm.linear, newdata = Xtest)
-confusion_table = table("fitted" = pred, "actual" = ytest)
+confusion_table = table("predicted" = pred, "actual" = ytest)
 confusion_table
 (confusion_table[1, 1] + confusion_table[2, 2]) / test_size
 ```
@@ -388,31 +381,64 @@ confusion_table
 ```
 
 
-## Random Forest 
-```{r}
+## Random Forest   
+Random forests are another classification model that is less vulnerable to "the curse of dimensionality". Since there were many parameters that needed to be tuned, we again utilized `caret` package to cross validate the model. 
+
+```{r, eval=FALSE}
 library(randomForest)
 rf.fit = randomForest(Xtrain, ytrain, 
-                      ntree=500, 
-                      mtry=10, 
-                      nodesize=10, 
+                      ntree=1000, 
+                      mtry=20, 
+                      nodesize=5, 
                       samplesize=400, 
                       importance=TRUE)
 ```
 
-```{r}
+```{r, include=FALSE}
+library(ranger)
+set.seed(651978735)
+grid = expand.grid(mtry=c(20, 32, 40), 
+                   splitrule="gini", 
+                   min.node.size=c(5, 10, 15))
+train_control = trainControl(method="cv", number=5)
+
+rf.cv.fit = train(y ~., data=train_data,
+               method="ranger",
+               trControl=train_control, 
+               tuneGrid=grid,
+               num.trees=1000,
+               respect.unordered.factors="partition")
+```
+
+In a 5-fold cross-validation, we tuned `mtry` and `min.node.size`. In addition, we found that `num.trees` was also influential to both the parameter tuning and the test accuracy. Thus, we manually tuned the number of trees and chose the best value by looking at the test accuracy. The output showed that the best parameters were `mtry = 40` and `min.node.size = 15` when `num.trees = 1000` according to the test accuracy.   
+
+```{r, echo=FALSE}
+rf.cv.fit$bestTune
+rf.cv.fit$results
+```
+
+The confusion matrix and the highest test accuracy, 0.9048, were shown here. 
+```{r, eval=FALSE}
 pred = predict(rf.fit, Xtest)
-confusion_table = table("fitted" = pred, "actual" = ytest)
+confusion_table = table("predicted" = pred, "actual" = ytest)
 confusion_table
 (confusion_table[1, 1] + confusion_table[2, 2]) / test_size
 ```
 
-```{r}
-library(ROCR)
-roc = prediction(as.numeric(pred), ytest)
-performance(roc, measure = "auc")@y.values[[1]]
+```{r, echo=FALSE}
+pred = predict(rf.cv.fit, Xtest)
+confusion_table = table("predicted" = pred, "actual" = ytest)
+confusion_table
+(confusion_table[1, 1] + confusion_table[2, 2]) / test_size
+```
 
-perf = performance(roc, "tpr", "fpr") 
-plot(perf, colorize = T)
+```{r, eval=FALSE}
+# library(ROCR)
+# roc = prediction(as.numeric(pred), ytest)
+# performance(roc, measure = "auc")@y.values[[1]]
+# 
+# perf = performance(roc, "tpr", "fpr") 
+# plot(perf, colorize = T)
 ```
 
 
@@ -422,15 +448,15 @@ To establish the Modeling for histological,  We first use logistical regression,
 
 ```{r some-processing}
 y = as.factor(sub$histological.type)
-<<<<<<< HEAD
+# <<<<<<< HEAD
 y = ifelse(y == "infiltrating lobular carcinoma", 1, 0)
 # cleaned dataset with histological.type as response 
 sub3 = cbind(rs_transformed, cn, mu, pp_normalized, y) 
 dim(sub3)
-=======
+# =======
 y = as.factor(ifelse(y == "infiltrating lobular carcinoma", 1, 0))
 sub3 = cbind(rs, cn, mu, pp, y) # cleaned dataset with PR.status as response 
->>>>>>> 9c5085e16cb2950f3b6999b762e411663f8f1b4c
+# >>>>>>> 9c5085e16cb2950f3b6999b762e411663f8f1b4c
 ```
 
 ```{r split-train-test-data}
@@ -507,9 +533,9 @@ ytest = sub4$ER.Status[test_idx]
 ytrain = sub4$ER.Status[-test_idx]
 svm.fit = svm(ytrain ~., data=Xtrain, 
               type="C-classification", kernel="linear", scale=F, cost=1)
-table("fitted" = svm.fit$fitted, "actual" = ytrain)
+table("predicted" = svm.fit$fitted, "actual" = ytrain)
 pred = predict(svm.fit, newdata = Xtest)
-table("fitted" = pred, "actual" = ytest)
+table("predicted" = pred, "actual" = ytest)
 ```
 
 
@@ -531,7 +557,7 @@ rf.fit = randomForest(Xtrain, ytrain,
                       importance=TRUE)
 
 pred = predict(rf.fit, Xtest)
-table("fitted" = pred, "actual" = ytest)
+table("predicted" = pred, "actual" = ytest)
 roc = prediction(as.numeric(pred), ytest)
 performance(roc, measure = "auc")@y.values[[1]]
 
