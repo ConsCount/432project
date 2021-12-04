@@ -21,14 +21,12 @@ background-color: #CCDDFF;
 }
 ```
 
-**Note: have not finished data preprocessing**   
-
 # Project Description (est. 1 page, pt. 5)
 
 # Literature Review(est. 1 page, pt.10)
 
 \newpage
-# Summary Statistics and Data Preprocessing (est. 1 -2 pages, pt.10)
+# Summary Statistics and Data Preprocessing 
 
 ## Data Overview  
 The dataset has 705 observations and 1941 features (1936 predictors and 5 outcomes). There are four different kinds of predictors: `rs` (gene expression), `cn` (copy number variations), `mu` (mutations), and `pp` (protein levels). Among them, `rs` and `pp` are continuous variables, and `cn` and `mu` are categorical variables. 
@@ -88,7 +86,7 @@ dim(sub)
 ## Deal with Multicollinearity 
 One of the noticeable characteristics of the data is its high dimensionality. There are 1936 predictors, almost four times as many as there are observations. Therefore, it is essential to check correlation.   
 
-Since there are four kinds of predictors, it is unlikely that two variables that belong to different kinds would be highly correlated. Also, to reduce the computational cost, we split the data into four subsets: `rs`, `cn`, `mu`, and `pp`, each of which contained only ond kind of predictors.  
+Since there are four kinds of predictors, it is unlikely that two variables coming from different kinds would be highly correlated. Also, to reduce the computational cost, we split the data into four subsets: `rs`, `cn`, `mu`, and `pp`, each of which contained only ond kind of predictors.  
 
 Then, we created the correlation matrix for each subset, and extracted variables that are highly-correlated with at least one other variable. Take `rs` as an example. The dataframe `idx` stores all matrix indices of highly-correlated variables and the corresponding correlation coefficients. If the i-th variable is highly-correlated with the j-th variable, then we only need one of them. Thus, we removed all variables with indices `i`. For `rs`, 94 predictors were removed. We applied the same process to the other three subsets. In total, 882 predictors were removed. There are 1059 predictors remained. 
 
@@ -180,7 +178,7 @@ pp = pp[,-rmv]
 ```
 
 ## Continuous Variables  
-As mentioned before, `rs` and `pp` are continuous variables, so we should examine if there are any outliers. We first normalized the variable, and stored row and column indices if the data point was three standard deviations away from the variable mean. For the two subsets, `rs` had 100 outliers, and `pp` had no outlier.   
+As mentioned before, `rs` and `pp` are continuous variables, so we should examine if there are any outliers. We first normalized the variable, and stored row and column indices if the data point was three standard deviations away from the mean. For the two subsets, `rs` had 100 outliers, and `pp` had no outlier.   
 
 We further looked into `rs` predictors that included outliers, and we found the vast majority of them had a long tail, mostly right and some left. In addition, a number of `rs` predictors that did not contain outliers also had a non-standard distribution. As a result, a log transformation of `rs` predictors would be beneficial.  
 
@@ -240,7 +238,7 @@ length(row_idx)
 ```{r, echo=FALSE, fig.show="hold", fig.align="center", out.width="30%"}
 # outlier example 
 hist(rs[,col_idx_rs[1]], 
-     main = paste("right-skewed example:", names(rs)[col_idx_rs[1]]))
+     main = paste("right-skewed example (had outliers):", names(rs)[col_idx_rs[1]]))
 
 # no outlier example 
 hist(rs[,1], 
@@ -273,13 +271,13 @@ for (i in 1:ncol(pp)) {
 
 ```{r, echo=FALSE, fig.show="hold", fig.align="center", out.width="30%"}
 hist(pp[,1], 
-     main = paste("Before Normalization", names(pp)[1]))
+     main = paste("Before Normalization:", names(pp)[1]))
 hist(pp_normalized[,1], 
-     main = paste("After Normalization", names(pp_normalized)[1]))
+     main = paste("After Normalization:", names(pp_normalized)[1]))
 ```
 
 ## Categorical Variables  
-All four outcomes were imbalanced, among which `histological.type` was the most imbalanced. Only 10% of the responses were IDC. In some cases, such imbalance would cause models to learn nothing from the minority class. If our data also suffer from problems like this, we should resolve the imbalance by techniques like undersampling. However, if our models perform well enough on current data, no further action needs to be taken. 
+All four outcomes were more or less imbalanced, among which `histological.type` was the most imbalanced. Only 10% of the responses were ILC. In some cases, such imbalance would be problematic since models would learn nothing from the minority class. If our data also suffer from problems like this, we should resolve the imbalance by techniques like undersampling. However, if our models perform well enough on current data, no further action needs to be taken. 
 
 Fortunately, we trained our models first, and found the models obtained high enough accuracy and AUC scores. Therefore, we decided to not address imbalanced outcomes. 
 
@@ -292,19 +290,15 @@ table(sub$HER2.Final.Status) / nrow(sub)
 
 
 ```{r, echo=FALSE, out.width="30%", fig.show="hold", fig.align="center"}
-# par(mfrow=c(2, 1))
-# barplot(table(sub$PR.Status))
-# barplot(table(sub$ER.Status))
-# barplot(table(sub$HER2.Final.Status))
 barplot(table(sub$histological.type),
         ylim=c(0, 500),
         main="Histological Type",
         names.arg = c("IDC", "ILC"))
 ```
 
-# Modeling `PR Status` (est. 2-3 pages, pt.20)
+# Modeling `PR Status`
 
-Before modeling, we split the train and test datasets. We used 25% of the samples (126) for testing and 75% of the samples for trianing (381). 
+Before modeling, we split the train and test datasets. We used 25% of the samples (126) for testing and 75% of the samples (381) for training. 
 
 ```{r, include=FALSE}
 # cleaned dataset with PR.status as response 
@@ -331,10 +325,9 @@ train_data = sub2[-test_idx,]
 
 ## Support Vector Machine (SVM)
 
-The goal of the project was to make classifications. Plus, we needed to deal with high-dimensional data. Therefore, we should choose classification models that perform well for high-dimensional data. Support vector machines are famous for its capability in high-dimensional spaces, so we first fitted a basic linear SVM, with the default `cost = 1` to see how it worked.   
+The goal of the project was to make classifications. Plus, we needed to alleviate "the curse of dimensionality". Therefore, we should choose classification models that perform well on high-dimensional data. Support vector machines are famous for its capability in high-dimensional spaces, so we first fitted a basic linear SVM, with the default `cost = 1` to see how it worked.   
 
-As the confusion matrix showed, the in-sample accuracy was 1.0, which implies that we may prefer the linear kernel to the radial kernel. 
-
+As the confusion matrix showed, the in-sample accuracy was 1.0, which implied that we might prefer the linear kernel to the radial kernel. 
 ```{r basic linear fit, echo=FALSE}
 # basic fit 
 library(e1071)
@@ -360,7 +353,7 @@ svm.linear$bestTune
 svm.linear$results
 ```
 
-For the radial kernel, the best `C` was 0.001 and the best `sigma` was 3. However, the results showed that the radial SVM fitted poorly, since the accuracies remained the same and were merely 0.6677. The fact verified our hypothesis that a linear kernel would work better. Thus, we picked the linear SVM with `C` equals 0.001 to make classifications. 
+For the radial kernel, the best `C` was 0.001 and the best `sigma` was 3. However, the figure showed that the radial SVM fitted poorly, since the accuracies remained the same and were merely 0.6677. The fact verified our hypothesis that a linear kernel would work better. Thus, we picked the linear SVM with `C` equals 0.001 to make classifications. 
 
 ```{r SVM Radial Kernel, warning=FALSE, include=FALSE}
 library(caret)
@@ -373,7 +366,7 @@ svm.radial = train(y ~., data=train_data,
 
 ```{r, echo=FALSE}
 svm.radial$bestTune
-svm.radial$results
+# svm.radial$results
 ```
 
 ```{r, echo=FALSE, fig.align="center", out.width="60%"}
@@ -525,17 +518,20 @@ performance(roc2, measure = "auc")@y.values[[1]]
 
 Using Random Forest, select the most important 50 variables, and make predictions based on these variables. 
 
-```{r, include=FALSE}
+```{r}
+# fit a random forest with best parameters selected by cross-validation
 library(randomForest)
+set.seed(651978735)
 rf.fit = randomForest(Xtrain, ytrain, 
-                      ntree=1000, 
-                      mtry=20, 
-                      nodesize=5, 
+                      ntree=500, 
+                      mtry=40, 
+                      nodesize=15, 
                       samplesize=400, 
                       importance=TRUE)
 ```
 
-```{r, include=FALSE}
+```{r}
+# check the model's test accuracy
 pred = predict(rf.fit, Xtest)
 confusion_table = table("predicted" = pred, "actual" = ytest)
 confusion_table
@@ -543,26 +539,31 @@ confusion_table
 ```
 
 ```{r}
+# selected the most important 50 variables
 impt = rf.fit$importance[order(rf.fit$importance[,3], decreasing=TRUE),][1:50,]
 vars = rownames(impt)
 ```
 
 ```{r}
 # sub4 is the cleaned dataset with all four response variables
+# columns: 50 predictors, 4 outcomes 
 sub4 = subset(sub, select = vars)
 sub4 = cbind(sub4, sub[1937:1940])
 sub4$PR.Status = as.factor(sub4$PR.Status)
 sub4$histological.type = as.factor(sub4$histological.type)
 sub4$ER.Status = as.factor(sub4$ER.Status)
 sub4$HER2.Final.Status = as.factor(sub4$HER2.Final.Status)
+dim(sub4)
 ```
 
 ```{r}
+# split test and train
 Xtest = sub4[test_idx, 1:50]
 Xtrain = sub4[-test_idx, 1:50]
 ```
 
 ```{r}
+# fit for ER.Status (SVM)
 ytest = sub4$ER.Status[test_idx]
 ytrain = sub4$ER.Status[-test_idx]
 svm.fit = svm(ytrain ~., data=Xtrain, 
@@ -573,6 +574,7 @@ table("predicted" = pred, "actual" = ytest)
 ```
 
 ```{r}
+# the AUC is 0.84
 library(ROCR)
 roc = prediction(as.numeric(pred), ytest)
 performance(roc, measure = "auc")@y.values[[1]]
@@ -582,6 +584,7 @@ plot(perf, colorize = T)
 ```
 
 ```{r}
+# fit for ER.Status, random forest, AUC is 0.90
 rf.fit = randomForest(Xtrain, ytrain, 
                       ntree=500, 
                       mtry=7, 
