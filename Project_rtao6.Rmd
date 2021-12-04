@@ -357,8 +357,9 @@ plot(perf, colorize = T)
 
 
 # Histological Type (hcluster and knn regression) (est 2-3 pages, pt.20)
-To establish the Modeling for histological,  We first use logistical regression, However, when we build the model, we found that the logistic model's algothrim is not coverge. The reason that this error occur, because the variable x can divide the reponse variable y into 0 and 1 perfectly. The accurate will be 100%. To solve the problem we decided to use penalized regression. Thus, we choose the modle of logistic regession with ridge pentalty.
+To establish the Modeling for histological,  We first use logistical regression, However, when we build the model, we found that the logistic model's algothrim is not coverge. The reason that this error occur, because the variable x can divide the reponse variable y into 0 and 1 perfectly. The accurate will be 100%. To solve the problem we decided to use penalized regression. Thus, we choose the modle of logistic regession with ridge penalty
 
+## Logistic Regression
 
 ```{r some-processing}
 y = as.factor(sub$histological.type)
@@ -379,36 +380,50 @@ ytest = sub3[test_idx, ncol(sub2)]
 ytrain = sub3[-test_idx, ncol(sub2)]
 ```
 
+## logistic regression with ridge penalty and 10 fold corss validation.
+
 ```{r logistic regression}
 library(glmnet)
 fit1 = cv.glmnet(x = data.matrix(Xtrain), y = ytrain, nfolds = 10, 
                  type.measure = "auc", family = "binomial")
-fit2 = glmnet(x = data.matrix(Xtrain),y = ytrain, family = binomial,
-             alpha = 0)
-lam = coef(fit2, s = fit1$lambda.min)
-pred = predict(fit2, newx = data.matrix(Xtest), type = "response", s = fit1$lambda.min)
+pred = predict(fit1, newx = data.matrix(Xtest), type = "response", s = fit1$lambda.min)
 hist(pred)
 ```
 
-```{r}
-table(as.factor(pred > 0.2),ytest)
-acc = (111+4)/(97+1+18+10)
+```{r accurate}
+table(as.factor(pred > 0.5),ytest)
+acc = (115+6)/length(ytest)
 acc
 ```
-```{r}
+```{r calculate auc}
 roc2 <- prediction(pred, ytest)
 # calculates the ROC curve
 perf2 <- performance(roc2,"tpr","fpr")
 plot(perf2,colorize=TRUE)
 performance(roc2, measure = "auc")@y.values[[1]]
 ```
+## hcluster clustering 
 
 ```{r perform kmean}
-sub4 = sub3[,-1099]
-kmeanfit <- kmeans(sub4, 2)
-table((kmeanfit$cluster - 1),sub3$y)
-acc = (394 + 2)/ nrow(sub4)
-acc
+# sub4 = sub3[,-1099]
+# kmeanfit <- kmeans(sub4, 2)
+# table((kmeanfit$cluster - 1),sub3$y)
+
+data1 = dist(sub3)
+complete_hc <- hclust(data1,method = "complete")
+# plot(complete_hc)
+single_hc <- hclust(data1,method = "single")
+# plot(single_hc)
+average_hc <- hclust(data1,method = "average")
+# plot(average_hc)
+clusters = cutree(complete_hc, k = 2)
+table((clusters - 1),sub3$y)
+
+roc2 <- prediction((clusters - 1), sub3$y)
+# calculates the ROC curve
+perf2 <- performance(roc2,"tpr","fpr")
+plot(perf2,colorize=TRUE)
+performance(roc2, measure = "auc")@y.values[[1]]
 ```
 
 # Variable Selection for All Outcomes (random forest?) (est. 2-3 pages. pt.20)
