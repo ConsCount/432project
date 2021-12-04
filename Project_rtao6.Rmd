@@ -575,7 +575,7 @@ confusion_table
 ```{r}
 # selected the most important 50 variables
 impt = rf.fit$importance[order(rf.fit$importance[,3], decreasing=TRUE),][1:50,]
-vars = rownames(impt)
+vars = c(rownames(impt), c("pp_E.Cadherin", "pp_PTEN", "mu_TBX3", "cn_FOXA1", "mu_FOXA1", "rs_FOXA1"))
 ```
 
 ```{r}
@@ -641,11 +641,12 @@ fold_id = fold_ID[1:nrow(sub4)]
 ```
 
 ```{r}
+AUC.cv = rep(NA, 4)
 AUC = c()
 for (i in 1:3) {
   tst_idx = which(fold_id == i)
-  Xtrain = sub4[-tst_idx, 1:50]
-  Xtest = sub4[tst_idx, 1:50]
+  Xtrain = sub4[-tst_idx, 1:56]
+  Xtest = sub4[tst_idx, 1:56]
   ytrain = sub4$ER.Status[-tst_idx]
   ytest = sub4$ER.Status[tst_idx]
   rf.fit = randomForest(Xtrain, ytrain, 
@@ -658,8 +659,65 @@ for (i in 1:3) {
   roc = prediction(as.numeric(pred), ytest)
   auc = performance(roc, measure = "auc")@y.values[[1]]
   AUC = c(AUC, auc)
+  AUC.cv[1] = mean(AUC)
+}
+
+for (i in 1:3) {
+  tst_idx = which(fold_id == i)
+  Xtrain = sub4[-tst_idx, 1:56]
+  Xtest = sub4[tst_idx, 1:56]
+  ytrain = sub4$PR.Status[-tst_idx]
+  ytest = sub4$PR.Status[tst_idx]
+  rf.fit = randomForest(Xtrain, ytrain, 
+                      ntree=500, 
+                      mtry=40, 
+                      nodesize=15, 
+                      samplesize=400, 
+                      importance=TRUE)
+  pred = predict(rf.fit, Xtest)
+  roc = prediction(as.numeric(pred), ytest)
+  auc = performance(roc, measure = "auc")@y.values[[1]]
+  AUC = c(AUC, auc)
+  AUC.cv[2] = mean(AUC)
+}
+
+for (i in 1:3) {
+  tst_idx = which(fold_id == i)
+  Xtrain = sub4[-tst_idx, 1:56]
+  Xtest = sub4[tst_idx, 1:56]
+  ytrain = sub4$histological.type[-tst_idx]
+  ytest = sub4$histological.type[tst_idx]
+  rf.fit = randomForest(Xtrain, ytrain, 
+                      ntree=500, 
+                      mtry=40, 
+                      nodesize=15, 
+                      samplesize=400, 
+                      importance=TRUE)
+  pred = predict(rf.fit, Xtest)
+  roc = prediction(as.numeric(pred), ytest)
+  auc = performance(roc, measure = "auc")@y.values[[1]]
+  AUC = c(AUC, auc)
+  AUC.cv[3] = mean(AUC)
+}
+
+for (i in 1:3) {
+  tst_idx = which(fold_id == i)
+  Xtrain = sub4[-tst_idx, 1:56]
+  Xtest = sub4[tst_idx, 1:56]
+  ytrain = sub4$HER2.Final.Status[-tst_idx]
+  ytest = sub4$HER2.Final.Status[tst_idx]
+  rf.fit = randomForest(Xtrain, ytrain, 
+                      ntree=500, 
+                      mtry=40, 
+                      nodesize=15, 
+                      samplesize=400, 
+                      importance=TRUE)
+  pred = predict(rf.fit, Xtest)
+  roc = prediction(as.numeric(pred), ytest)
+  auc = performance(roc, measure = "auc")@y.values[[1]]
+  AUC = c(AUC, auc)
+  AUC.cv[4] = mean(AUC)
 }
 ```
-
 
 
