@@ -49,9 +49,9 @@ names(brca)[1937:1940]
 
 ```{r, echo=FALSE, fig.show="hold", fig.align="center", out.width="23%"}
 hist(brca$rs_CLEC3A, main="Histogram of rs_CLEC3A")
-hist(brca$cn_A2ML1, main="Histogram of cn_A2ML1")
-hist(brca$mu_ABCA12, main="Histogram of mu_ABCA12")
-hist(brca$pp_A.Raf, main="pp_A.Raf")
+hist(brca$pp_A.Raf, main="Histogram of pp_A.Raf")
+barplot(table(brca$cn_A2ML1), main="Bar Plot of cn_A2ML1")
+barplot(table(brca$mu_ABCA12), main="Bar Plot of mu_ABCA12")
 ```
 
 ## Remove Missing Values
@@ -175,7 +175,7 @@ length(rmv)
 pp = pp[,-rmv]
 ```
 
-## Continuous Predictors 
+## Continuous Variables  
 As mentioned before, `rs` and `pp` are continuous variables, so we should examine if there are any outliers. We first normalized the variable, and stored row and column indices if the data point was three standard deviations away from the variable mean. For the two subsets, `rs` had 100 outliers, and `pp` had no outlier.   
 
 We further looked into `rs` predictors that included outliers, and we found the vast majority of them had a long tail, mostly right and some left. In addition, a number of `rs` predictors that did not contain outliers also had a non-standard distribution. As a result, a log transformation of `rs` predictors would be beneficial.  
@@ -274,7 +274,21 @@ hist(pp_normalized[,1],
      main = paste("After Normalization", names(pp_normalized)[1]))
 ```
 
-## Categorical Predictors 
+## Categorical Variables  
+```{r}
+par(mfrow=c(2, 2))
+barplot(table(sub$PR.Status))
+barplot(table(sub$ER.Status))
+barplot(table(sub$HER2.Final.Status))
+barplot(table(sub$histological.type), names.arg = c("IDC", "ILC"))
+```
+
+```{r, include=FALSE}
+for (i in 1:10) {
+  barplot(table(cn[,i]), main=names(cn)[i], ylim=c(0, 300))
+}
+```
+
 
 # models that perform well on high-dimensional data
 - SVM 
@@ -282,17 +296,18 @@ hist(pp_normalized[,1],
 - Lasso (?)
 - KNN regression
 
-# PR Status (Modeling, SVM and random Forest) (est. 2-3 pages, pt.20)
-```{r}
+# Modeling `PR Status` (est. 2-3 pages, pt.20)
+
+Before modeling, we split the train and test datasets. We used 25% of the samples (126) for testing and 75% of the samples for trianing (381). 
+
+```{r, include=FALSE}
 # cleaned dataset with PR.status as response 
 y = as.factor(sub$PR.Status)
-y = ifelse(y == "Positive", 1, 0)
-# sub2 = cbind(rs, cn, mu, pp, y) 
 sub2 = cbind(rs_transformed, cn, mu, pp_normalized, y)
 dim(sub2)
 ```
 
-```{r}
+```{r, include=FALSE}
 set.seed(651978735) 
 n = dim(sub)[1]
 test_size = as.integer(0.25 * n)
@@ -303,35 +318,80 @@ Xtrain = sub2[-test_idx, -ncol(sub2)]
 
 ytest = sub2[test_idx, ncol(sub2)]
 ytrain = sub2[-test_idx, ncol(sub2)]
+
+test_data = sub2[test_idx,]
+train_data = sub2[-test_idx,]
 ```
 
-```{r}
+## Support Vector Machine (SVM)
+
+The goal of the project was to make classifications. Plus, we needed to deal with high-dimensional data. Therefore, we should choose classification models that perform well for high-dimensional data. Support vector machines are famous for its capability in high-dimensional spaces, so we first fitted a basic linear SVM, with the default `cost = 1` to see how it worked.   
+
+As the confusion matrix showed, the in-sample accuracy was 1.0, which implies that we may prefer the linear kernel to the radial kernel. 
+
+```{r basic linear fit, echo=FALSE}
+# basic fit 
 library(e1071)
 svm.fit = svm(ytrain ~., data=Xtrain, 
               type="C-classification", kernel="linear", scale=F, cost=1)
 table("fitted" = svm.fit$fitted, "actual" = ytrain) # in-sample confusion matrix 
 ```
 
-```{r}
-pred = predict(svm.fit, newdata = Xtest)
+Then we constructed two grids of tuning parameters for both linear and radial kernels, and we used 5-fold cross-validation to tune the parameters and to determine which kernel was better.  
+
+For the linear kernel, the best `C` was 0.001 with an in-sample accuracy of 0.8324. 
+
+```{r, warning=FALSE, include=FALSE}
+library(caret)
+cost.grid = expand.grid(C = c(0.001, 0.01, 0.05, 0.1, 0.5, 1)) 
+train_control = trainControl(method="cv", number=5)
+svm.linear = train(y ~., data=train_data,
+                   method="svmLinear", trContorl=train_control, tuneGrid=cost.grid)
+```
+
+```{r, echo=FALSE}
+svm.linear$bestTune
+svm.linear$results
+```
+
+For the radial kernel, the best `C` was 0.001 and the best `sigma` was 3. However, the results showed that the radial SVM fitted poorly, since the accuracies remained the same and were merely 0.6677. The fact verified our hypothesis that a linear kernel would work better. Thus, we picked the linear SVM with `C` equals 0.001 to make classifications. 
+
+```{r SVM Radial Kernel, warning=FALSE, include=FALSE}
+library(caret)
+cost.grid = expand.grid(C = c(0.001, 0.01, 1), 
+                        sigma = c(0.1, 1, 3)) 
+train_control = trainControl(method="cv", number=5)
+svm.radial = train(y ~., data=train_data,
+                   method="svmRadial", trContorl=train_control, tuneGrid=cost.grid)
+```
+
+```{r, echo=FALSE}
+svm.radial$bestTune
+svm.radial$results
+```
+
+We made predictions for the test data, and printed the confusion table below. The accuracy was 0.9048. Thus, the linear SVM performed quite well. 
+```{r, echo=FALSE}
+pred = predict(svm.linear, newdata = Xtest)
 confusion_table = table("fitted" = pred, "actual" = ytest)
 confusion_table
-# (34 + 69) / (34 + 69 + 14 + 9)
 (confusion_table[1, 1] + confusion_table[2, 2]) / test_size
 ```
 
-```{r}
-library(ROCR)
-roc = prediction(as.numeric(pred), ytest)
-performance(roc, measure = "auc")@y.values[[1]]
-
-perf = performance(roc, "tpr", "fpr") 
-plot(perf, colorize = T)
+```{r, include=FALSE}
+# library(ROCR)
+# roc = prediction(as.numeric(pred), ytest)
+# performance(roc, measure = "auc")@y.values[[1]]
+# 
+# perf = performance(roc, "tpr", "fpr") 
+# plot(perf, colorize = T)
 ```
 
+
+## Random Forest 
 ```{r}
 library(randomForest)
-rf.fit = randomForest(Xtrain, as.factor(ytrain), 
+rf.fit = randomForest(Xtrain, ytrain, 
                       ntree=500, 
                       mtry=10, 
                       nodesize=10, 
@@ -346,8 +406,8 @@ confusion_table
 (confusion_table[1, 1] + confusion_table[2, 2]) / test_size
 ```
 
-
 ```{r}
+library(ROCR)
 roc = prediction(as.numeric(pred), ytest)
 performance(roc, measure = "auc")@y.values[[1]]
 
@@ -363,8 +423,15 @@ To establish the Modeling for histological,  We first use logistical regression,
 
 ```{r some-processing}
 y = as.factor(sub$histological.type)
+<<<<<<< HEAD
+y = ifelse(y == "infiltrating lobular carcinoma", 1, 0)
+# cleaned dataset with histological.type as response 
+sub3 = cbind(rs_transformed, cn, mu, pp_normalized, y) 
+dim(sub3)
+=======
 y = as.factor(ifelse(y == "infiltrating lobular carcinoma", 1, 0))
 sub3 = cbind(rs, cn, mu, pp, y) # cleaned dataset with PR.status as response 
+>>>>>>> 9c5085e16cb2950f3b6999b762e411663f8f1b4c
 ```
 
 ```{r split-train-test-data}
