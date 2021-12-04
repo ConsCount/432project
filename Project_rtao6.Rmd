@@ -1,5 +1,5 @@
 ---
-title: "Project"
+title: "STAT 432 Final Project"
 output:
   pdf_document:
     toc: yes
@@ -25,9 +25,23 @@ background-color: #CCDDFF;
 
 # Project Description (est. 1 page, pt. 5)
 
-# Literature Review(est. 1 page, pt.10)
+# Literature Review
 
-# Summary Statistics and Data Preprocessing (est. 1 -2 pages, pt.10)
+
+The title of our first relevant paper is Tumor characteristics and patient outcomes are similar between invasive lobular and mixed invasive ductal/lobular breast cancers but differ from pure invasive ductal breast cancers. A total of 4,336 individuals with IDC, ILC, and mixed breast tumors were detected between 1996 and 2006. 
+
+The Kaplan-Meier method was used extensively in this paper, and survival curves were constructed using it.Chi-square tests and Fisher's exact tests were used to compare clinical variables.  The correlations between patient and tumor variables were summarized using contingency tables and investigated using Fisher's exact test as among three histologic groups. Patients with ILC and mixed breast cancers were more probable as IDC patients to have tumors that were estrogen receptor and progesterone receptor positive (P < 0.001 and P< 0.05, correspondingly). 
+
+After having read, we can conclude the following from the paper: first, despite being identified at lower clinical stages of infection, patients with IDC had the poorest long-term survival; second, individuals with ILC and "mixed" malignancies had a better prognosis than patients with IDC, despite having more advanced cancer. We were also motivated to utilize the log-rank test to estimate P values if necessary.
+
+The second research article is Infiltrating lobular carcinoma of the breast: tumor characteristics and clinical outcome. We summarize that these patients do not have improved clinical outcomes as IDC patients when ignoring the fact that ILC has a positive biologic pattern. Consequently, management decisions should be made based on the patient's and tumor's biologic characteristics, that instead of lobular histology. 
+
+About statistical methods, the clinical and biologic features of lobular and ductal carcinoma were compared by contingency tables, Chi-square tests and Fisher’s exact tests, which is similar with the method using in the first paper. To see if ILC was an independent predictive predictor for recurrence and death, researchers used multivariate analysis and Cox regression models. Tumor size, number of affected nodes, age, ER status, PgR status, DNA ploidy, S-phase, and histologic type were all considered in these analyses.
+
+The findings of this huge dataset have shown that ILC and IDC are distinct entities with distinctive clinical histories and biologic features, yet there are no clinically important variations in survival. At the present, both kinds of breast cancer should be treated identically, and histologic subtype (lobular or ductal) should not be regarded a determinant in therapeutic decision-making or an essential prognostic or predictive factor at diagnosis. Emerging technologies such as high throughput genome mapping and microchip cDNA expression arrays may help to uncover molecular distinctions between these different types of breast cancer.
+
+
+# Summary Statistics and Data Preprocessing
 
 ## Data Overview  
 The dataset has 705 observations and 1941 features (1936 predictors and 5 outcomes). There are four different kinds of predictors: `rs` (gene expression), `cn` (copy number variations), `mu` (mutations), and `pp` (protein levels). Among them, `rs` and `pp` are continuous variables, and `cn` and `mu` are categorical variables. 
@@ -443,15 +457,15 @@ sub3 = cbind(rs, cn, mu, pp, y) # cleaned dataset with PR.status as response
 
 ```{r split-train-test-data}
 set.seed(651978735) 
-n = dim(sub)[1]
+n = dim(sub3)[1]
 test_size = as.integer(0.25 * n)
 test_idx = sample(1:n, test_size) # 25% of the sample size 
 
-Xtest = sub3[test_idx, -ncol(sub2)]
-Xtrain = sub3[-test_idx, -ncol(sub2)]
-
-ytest = sub3[test_idx, ncol(sub2)]
-ytrain = sub3[-test_idx, ncol(sub2)]
+Xtest = sub3[test_idx, -ncol(sub3)]
+Xtrain = sub3[-test_idx, -ncol(sub3)]
+train = sub3[-test_idx]
+ytest = sub3[test_idx, ncol(sub3)]
+ytrain = sub3[-test_idx, ncol(sub3)]
 ```
 
 ## logistic regression with ridge penalty and 10 fold corss validation.
@@ -479,24 +493,42 @@ plot(perf2,colorize=TRUE)
 performance(roc2, measure = "auc")@y.values[[1]]
 ```
 
-## hcluster clustering 
+## kmean clustering 
 
 ```{r perform kmean}
 # sub4 = sub3[,-1099]
 # kmeanfit <- kmeans(sub4, 2)
 # table((kmeanfit$cluster - 1),sub3$y)
+pca <- prcomp(sub3[, -ncol(sub3)])
 
-data1 = dist(sub3)
-complete_hc <- hclust(data1,method = "complete")
-# plot(complete_hc)
-single_hc <- hclust(data1,method = "single")
-# plot(single_hc)
-average_hc <- hclust(data1,method = "average")
-# plot(average_hc)
-clusters = cutree(complete_hc, k = 2)
-table((clusters - 1),sub3$y)
+plot(pca, type = "l")
 
-roc2 <- prediction((clusters - 1), sub3$y)
+comp = pca$x[,1:4]
+kfit = kmeans(comp,2)
+clusters = kfit$cluster - 1
+table(clusters,sub3$y)
+
+roc2 <- prediction(clusters, sub3$y)
+# calculates the ROC curve
+perf2 <- performance(roc2,"tpr","fpr")
+plot(perf2,colorize=TRUE)
+performance(roc2, measure = "auc")@y.values[[1]]
+```
+
+## tunning tree 
+
+```{r}
+library(rpart)
+fit = rpart(as.factor(y)~., data= train,control = rpart.control(xval = 10))
+fit$cptable
+# prunedtree = prune(fit, cp=cptarg)
+# rpart.plot(prunedtree)
+# table(,ytest)
+pred = predict(fit,Xtest)
+result = ifelse(pred[,1] > pred[,2], 0, 1)
+table(result,ytest)
+
+roc2 <- prediction(result, ytest)
 # calculates the ROC curve
 perf2 <- performance(roc2,"tpr","fpr")
 plot(perf2,colorize=TRUE)
