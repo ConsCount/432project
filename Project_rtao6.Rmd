@@ -518,6 +518,8 @@ performance(roc2, measure = "auc")@y.values[[1]]
 
 Using Random Forest, select the most important 50 variables, and make predictions based on these variables. 
 
+**NOTE: have not cross validated, have not fitted for all outcomes (PR.Status, ER.Status, histological.type, HER2.Final.Status)** 
+
 ```{r}
 # fit a random forest with best parameters selected by cross-validation
 library(randomForest)
