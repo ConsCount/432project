@@ -372,16 +372,6 @@ confusion_table
 (confusion_table[1, 1] + confusion_table[2, 2]) / test_size
 ```
 
-```{r, include=FALSE}
-# library(ROCR)
-# roc = prediction(as.numeric(pred), ytest)
-# performance(roc, measure = "auc")@y.values[[1]]
-# 
-# perf = performance(roc, "tpr", "fpr") 
-# plot(perf, colorize = T)
-```
-
-
 ## Random Forest   
 Random forests are another classification model that is less vulnerable to "the curse of dimensionality". Since there were many parameters that needed to be tuned, we again utilized `caret` package to cross validate the model.   
 
@@ -426,7 +416,7 @@ rf.cv.fit$bestTune
 rf.cv.fit$results
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align="center", out.width="80%"}
 plot(rf.cv.fit)
 ```
 
@@ -437,16 +427,6 @@ confusion_table = table("predicted" = pred, "actual" = ytest)
 confusion_table
 (confusion_table[1, 1] + confusion_table[2, 2]) / test_size
 ```
-
-```{r, eval=FALSE, include=FALSE}
-# library(ROCR)
-# roc = prediction(as.numeric(pred), ytest)
-# performance(roc, measure = "auc")@y.values[[1]]
-# 
-# perf = performance(roc, "tpr", "fpr") 
-# plot(perf, colorize = T)
-```
-
 
 # Histological Type (hcluster and knn regression) (est 2-3 pages, pt.20)
 To establish the Modeling for histological,  We first use logistical regression, However, when we build the model, we found that the logistic model's algothrim is not coverge. The reason that this error occur, because the variable x can divide the reponse variable y into 0 and 1 perfectly. The accurate will be 100%. To solve the problem we decided to use penalized regression. Thus, we choose the modle of logistic regession with ridge penalty
