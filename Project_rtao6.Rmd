@@ -1,5 +1,5 @@
 ---
-title: "STAT 432 Final Project"
+title: "Project"
 output:
   pdf_document:
     toc: yes
@@ -21,35 +21,12 @@ background-color: #CCDDFF;
 }
 ```
 
-```{r, include=FALSE, warning=FALSE}
-# all packages
-library(glmnet)
-library(e1071)
-library(caret)
-library(randomForest)
-library(ranger)
-library(ROCR)
-```
-
 # Project Description (est. 1 page, pt. 5)
 
-# Literature Review
+# Literature Review(est. 1 page, pt.10)
 
-
-The title of our first relevant paper is Tumor characteristics and patient outcomes are similar between invasive lobular and mixed invasive ductal/lobular breast cancers but differ from pure invasive ductal breast cancers. A total of 4,336 individuals with IDC, ILC, and mixed breast tumors were detected between 1996 and 2006. 
-
-The Kaplan-Meier method was used extensively in this paper, and survival curves were constructed using it.Chi-square tests and Fisher's exact tests were used to compare clinical variables.  The correlations between patient and tumor variables were summarized using contingency tables and investigated using Fisher's exact test as among three histologic groups. Patients with ILC and mixed breast cancers were more probable as IDC patients to have tumors that were estrogen receptor and progesterone receptor positive (P < 0.001 and P< 0.05, correspondingly). 
-
-After having read, we can conclude the following from the paper: first, despite being identified at lower clinical stages of infection, patients with IDC had the poorest long-term survival; second, individuals with ILC and "mixed" malignancies had a better prognosis than patients with IDC, despite having more advanced cancer. We were also motivated to utilize the log-rank test to estimate P values if necessary.
-
-The second research article is Infiltrating lobular carcinoma of the breast: tumor characteristics and clinical outcome. We summarize that these patients do not have improved clinical outcomes as IDC patients when ignoring the fact that ILC has a positive biologic pattern. Consequently, management decisions should be made based on the patient's and tumor's biologic characteristics, that instead of lobular histology. 
-
-About statistical methods, the clinical and biologic features of lobular and ductal carcinoma were compared by contingency tables, Chi-square tests and Fisher’s exact tests, which is similar with the method using in the first paper. To see if ILC was an independent predictive predictor for recurrence and death, researchers used multivariate analysis and Cox regression models. Tumor size, number of affected nodes, age, ER status, PgR status, DNA ploidy, S-phase, and histologic type were all considered in these analyses.
-
-The findings of this huge dataset have shown that ILC and IDC are distinct entities with distinctive clinical histories and biologic features, yet there are no clinically important variations in survival. At the present, both kinds of breast cancer should be treated identically, and histologic subtype (lobular or ductal) should not be regarded a determinant in therapeutic decision-making or an essential prognostic or predictive factor at diagnosis. Emerging technologies such as high throughput genome mapping and microchip cDNA expression arrays may help to uncover molecular distinctions between these different types of breast cancer.
-
-
-# Summary Statistics and Data Preprocessing
+\newpage
+# Summary Statistics and Data Preprocessing 
 
 ## Data Overview  
 The dataset has 705 observations and 1941 features (1936 predictors and 5 outcomes). There are four different kinds of predictors: `rs` (gene expression), `cn` (copy number variations), `mu` (mutations), and `pp` (protein levels). Among them, `rs` and `pp` are continuous variables, and `cn` and `mu` are categorical variables. 
@@ -348,20 +325,20 @@ train_data = sub2[-test_idx,]
 
 ## Support Vector Machine (SVM)
 
-The goal of the project was to make classifications. Plus, we needed to alleviate "the curse of dimensionality". Therefore, we should choose classification models that perform well on high-dimensional data. Support vector machines are famous for its capability in high-dimensional spaces, so we first fitted a basic linear SVM, with the default `cost = 1` to see how it worked.
+The goal of the project was to make classifications. Plus, we needed to alleviate "the curse of dimensionality". Therefore, we should choose classification models that perform well on high-dimensional data. Support vector machines are famous for its capability in high-dimensional spaces, so we first fitted a basic linear SVM, with the default `cost = 1` to see how it worked.   
 
-As the confusion matrix showed, the in-sample accuracy was 1.0, which implied that we might prefer the linear kernel to the radial kernel.
+As the confusion matrix showed, the in-sample accuracy was 1.0, which implied that we might prefer the linear kernel to the radial kernel. 
 ```{r basic linear fit, echo=FALSE}
-# basic fit
+# basic fit 
 library(e1071)
-svm.fit = svm(ytrain ~., data=Xtrain,
+svm.fit = svm(ytrain ~., data=Xtrain, 
               type="C-classification", kernel="linear", scale=F, cost=1)
-table("predicted" = svm.fit$fitted, "actual" = ytrain) # in-sample confusion matrix
+table("predicted" = svm.fit$fitted, "actual" = ytrain) # in-sample confusion matrix 
 ```
 
-Then we constructed two grids of tuning parameters for both linear and radial kernels, and we used 5-fold cross-validation to tune the parameters and to determine which kernel was better.
+Then we constructed two grids of tuning parameters for both linear and radial kernels, and we used 5-fold cross-validation to tune the parameters and to determine which kernel was better.  
 
-For the linear kernel, the best `C` was 0.001 with an in-sample accuracy of 0.8324.
+For the linear kernel, the best `C` was 0.001 with an in-sample accuracy of 0.8324. 
 
 ```{r, warning=FALSE, include=FALSE}
 library(caret)
@@ -376,12 +353,12 @@ svm.linear$bestTune
 svm.linear$results
 ```
 
-For the radial kernel, the best `C` was 0.001 and the best `sigma` was 3. However, the figure showed that the radial SVM fitted poorly, since the accuracies remained the same and were merely 0.6677. The fact verified our hypothesis that a linear kernel would work better. Thus, we picked the linear SVM with `C` equals 0.001 to make classifications.
+For the radial kernel, the best `C` was 0.001 and the best `sigma` was 3. However, the figure showed that the radial SVM fitted poorly, since the accuracies remained the same and were merely 0.6677. The fact verified our hypothesis that a linear kernel would work better. Thus, we picked the linear SVM with `C` equals 0.001 to make classifications. 
 
 ```{r SVM Radial Kernel, warning=FALSE, include=FALSE}
 library(caret)
-cost.grid = expand.grid(C = c(0.001, 0.01, 1),
-                        sigma = c(0.1, 1, 3))
+cost.grid = expand.grid(C = c(0.001, 0.01, 1), 
+                        sigma = c(0.1, 1, 3)) 
 train_control = trainControl(method="cv", number=5)
 svm.radial = train(y ~., data=train_data,
                    method="svmRadial", trContorl=train_control, tuneGrid=cost.grid)
@@ -397,8 +374,7 @@ plot(svm.radial)
 ```
 
 
-We made predictions for the test data, and printed the confusion table below. The accuracy was 0.9048. Thus, the linear SVM performed quite well.
-
+We made predictions for the test data, and printed the confusion table below. The accuracy was 0.9048. Thus, the linear SVM performed quite well. 
 ```{r, echo=FALSE}
 pred = predict(svm.linear, newdata = Xtest)
 confusion_table = table("predicted" = pred, "actual" = ytest)
@@ -406,39 +382,42 @@ confusion_table
 (confusion_table[1, 1] + confusion_table[2, 2]) / test_size
 ```
 
-## Random Forest
-Random forests are another classification model that is less vulnerable to "the curse of dimensionality". Since there were many parameters that needed to be tuned, we again utilized `caret` package to cross validate the model.
+## Random Forest   
+Random forests are another classification model that is less vulnerable to "the curse of dimensionality". Since there were many parameters that needed to be tuned, we again utilized `caret` package to cross validate the model.   
 
-Before applying cross-validation, we should first determine `num.trees`, because it could not be included in the grid of parameters. Therefore, we first fitted a random forest using the `randomForest()` method with `ntree = 1000`, and plotted the error against trees.
+Before applying cross-validation, we should first determine `num.trees`, because it could not be included in the grid of parameters. Therefore, we first fitted a random forest using the `randomForest()` method with `ntree = 1000`, and plotted the error against trees. 
 
 ```{r, include=FALSE}
+library(randomForest)
 set.seed(651978735)
-rf.fit = randomForest(Xtrain, ytrain,
-                      ntree=1000,
-                      mtry=20,
-                      nodesize=5,
-                      samplesize=400,
+rf.fit = randomForest(Xtrain, ytrain, 
+                      ntree=1000, 
+                      mtry=20, 
+                      nodesize=5, 
+                      samplesize=400, 
                       importance=TRUE)
 ```
 
-As the plot demonstrated, the error stopped decreasing after the number of trees reached around 500. Thus, `ntree = 500` should be sufficient for training.
+As the plot demonstrated, the error stopped decreasing after the number of trees reached around 500. Thus, `ntree = 500` should be sufficient for training. 
 ```{r, echo=FALSE, fig.align="center", out.width="80%"}
-plot(rf.fit,
+plot(rf.fit, 
      main="Random Forest ntree Selection")
 ```
 
-In a 5-fold cross-validation, we tuned `mtry` and `min.node.size`. The output showed that the best parameters were `mtry = 40` and `min.node.size = 15` when `num.trees = 500` according to the test accuracy.
+In a 5-fold cross-validation, we tuned `mtry` and `min.node.size`. The output showed that the best parameters were `mtry = 40` and `min.node.size = 15` when `num.trees = 500` according to the test accuracy.   
 
 ```{r, include=FALSE}
+library(ranger)
+library(caret)
 set.seed(651978735)
-grid = expand.grid(mtry=c(20, 32, 40),
-                   splitrule="gini",
+grid = expand.grid(mtry=c(20, 32, 40), 
+                   splitrule="gini", 
                    min.node.size=c(5, 10, 15))
 train_control = trainControl(method="cv", number=5)
 
 rf.cv.fit = train(y ~., data=train_data,
                method="ranger",
-               trControl=train_control,
+               trControl=train_control, 
                tuneGrid=grid,
                num.trees=500,
                respect.unordered.factors="partition")
@@ -453,7 +432,7 @@ rf.cv.fit$results
 plot(rf.cv.fit, xlab="Number of Randomly Selected Predictors")
 ```
 
-The confusion matrix and the highest test accuracy, 0.9048, were shown here.
+The confusion matrix and the highest test accuracy, 0.9048, were shown here. 
 ```{r, echo=FALSE}
 pred = predict(rf.cv.fit, Xtest)
 confusion_table = table("predicted" = pred, "actual" = ytest)
@@ -461,51 +440,35 @@ confusion_table
 (confusion_table[1, 1] + confusion_table[2, 2]) / test_size
 ```
 
-# Modeling `Histological Type`
+# Histological Type (hcluster and knn regression) (est 2-3 pages, pt.20)
+To establish the Modeling for histological,  We first use logistical regression, However, when we build the model, we found that the logistic model's algothrim is not coverge. The reason that this error occur, because the variable x can divide the reponse variable y into 0 and 1 perfectly. The accurate will be 100%. To solve the problem we decided to use penalized regression. Thus, we choose the modle of logistic regession with ridge penalty
 
-To establish the Modeling for histological Type, We observe that the response variable `Histological Type` has only two levels “infiltrating lobular carcinoma” and “infiltrating ductal carcinoma”. Thus, Logistic model become a good choice. To Peform a logistic Model, we first split the data into train and test data. Test data will be random selected 25% of the sample size. 
+## Logistic Regression
+To performance 
 
-
-```{r some-processing, include= FALSE}
+```{r some-processing}
 y = as.factor(sub$histological.type)
+
 y = as.factor(ifelse(y == "infiltrating lobular carcinoma", 1, 0))
 sub3 = cbind(rs, cn, mu, pp, y) # cleaned dataset with PR.status as response 
 ```
 
-```{r split-train-test-data, include= FALSE}
+```{r split-train-test-data}
 set.seed(651978735) 
-n = dim(sub3)[1]
+n = dim(sub)[1]
 test_size = as.integer(0.25 * n)
 test_idx = sample(1:n, test_size) # 25% of the sample size 
 
-Xtest = sub3[test_idx, -ncol(sub3)]
-Xtrain = sub3[-test_idx, -ncol(sub3)]
-train = sub3[-test_idx]
-ytest = sub3[test_idx, ncol(sub3)]
-ytrain = sub3[-test_idx, ncol(sub3)]
-```
-## Logistic Regression
+Xtest = sub3[test_idx, -ncol(sub2)]
+Xtrain = sub3[-test_idx, -ncol(sub2)]
 
-Once, we attempted to fit logistic model with our data, the algorithm throw a warning said "algorithm did not converge". In other words, we are experience a perfect sepration. As the confusion matrix shows below, our model has 100% accuracy and AUC with 1. 
-```{r, echo= FALSE}
-library(ROCR)
-logistic.fit <- glm(y~., data = sub3, family = binomial)
-roc2 <- prediction(logistic.fit$fitted.values, sub3$y)
-# calculates the ROC curve
-perf2 <- performance(roc2,"tpr","fpr")
-# plot(perf2,colorize=TRUE)
-cat("AUC =", performance(roc2, measure = "auc")@y.values[[1]])
-table(logistic.fit$fitted.values > 0.5, sub3$y)
+ytest = sub3[test_idx, ncol(sub2)]
+ytrain = sub3[-test_idx, ncol(sub2)]
 ```
 
+## logistic regression with ridge penalty and 10 fold corss validation.
 
-
-## Logistic Regression with ridge penalty and corss validation.
-
-
-The above model is obviously not correct. Thus, we decided to use penalized regression and cross validation. Thus, we are going to perform a logistic model with ridge penalty and 10-fold cross validation. Since, the Logistic Regresion Model will not return value with 0 and 1 Thus, we decided to choose the cut-off value based on the distribution of the predict result. Thus, we plot the histogram of the prediction result. 
-
-```{r logistic regression with ridge penalty and 10 fold corss validation, echo = FALSE, message=FALSE ,fig.align="center", out.width="80%"}
+```{r logistic regression with ridge penalty and 10 fold corss validation}
 library(glmnet)
 fit1 = cv.glmnet(x = data.matrix(Xtrain), y = ytrain, nfolds = 10, 
                  type.measure = "auc", family = "binomial")
@@ -513,25 +476,22 @@ pred = predict(fit1, newx = data.matrix(Xtest), type = "response", s = fit1$lamb
 hist(pred)
 ```
 
-Based on the graph shows above, we decided to choose cut-off value as 0.5. The the prediction result will give 121 FALSE and 5 TRUE.
-
-```{r, echo= FALSE }
-table(pred > 0.5)
+```{r accurate, include = FALSE}
+table(as.factor(pred > 0.5),ytest)
+acc = (115+6)/length(ytest)
+acc
 ```
-Then, we are going to plot the ROC and calculate AUC. 
 
-```{r calculate auc, echo=FALSE,fig.align="center", out.width="80%"}
+```{r calculate auc}
+library(ROCR)
 roc2 <- prediction(pred, ytest)
 # calculates the ROC curve
 perf2 <- performance(roc2,"tpr","fpr")
 plot(perf2,colorize=TRUE)
-cat("AUC =",performance(roc2, measure = "auc")@y.values[[1]])
-table(pred > 0.5, ytest)
+performance(roc2, measure = "auc")@y.values[[1]]
 ```
 
-Based on the ROC and output given above, AUC is 0.915415, which is a good result 
-
-## kmean clustering 
+## Kmeans clustering 
 
 We decided to using kmean clustering as our second model. Since, we known that Kmean clustering does not have a good performace on high demision data .Thus, we decided to use dimensionality reduction technique such as principal components analysis.
 
@@ -581,18 +541,19 @@ performance(roc2, measure = "auc")@y.values[[1]]
 
 # Variable Selection for All Outcomes (random forest?) (est. 2-3 pages. pt.20)
 
-Using Random Forest, select the most important 50 variables, and make predictions based on these variables.
+Using Random Forest, select the most important 50 variables, and make predictions based on these variables. 
 
-**NOTE: have not cross validated, have not fitted for all outcomes (PR.Status, ER.Status, histological.type, HER2.Final.Status)**
+**NOTE: have not cross validated, have not fitted for all outcomes (PR.Status, ER.Status, histological.type, HER2.Final.Status)** 
 
 ```{r}
 # fit a random forest with best parameters selected by cross-validation
+library(randomForest)
 set.seed(651978735)
-rf.fit = randomForest(Xtrain, ytrain,
-                      ntree=500,
-                      mtry=40,
-                      nodesize=15,
-                      samplesize=400,
+rf.fit = randomForest(Xtrain, ytrain, 
+                      ntree=500, 
+                      mtry=40, 
+                      nodesize=15, 
+                      samplesize=400, 
                       importance=TRUE)
 ```
 
@@ -606,14 +567,16 @@ confusion_table
 
 ```{r}
 # selected the most important 50 variables
-impt = rf.fit$importance[order(rf.fit$importance[,3], decreasing=TRUE),][1:50,]
-vars = c(rownames(impt), c("pp_E.Cadherin", "pp_PTEN", "mu_TBX3", "cn_FOXA1", "mu_FOXA1", "rs_FOXA1"))
+impt = rf.fit$importance[order(rf.fit$importance[,3], decreasing=TRUE),][1:43,]
+vars = rownames(impt)
+sub4.1 = cbind(sub$pp_PTEN, sub$mu_PTEN, sub$mu_TBX3, sub$cn_FOXA1, sub$mu_FOXA1, sub$rs_FOXA1, sub$pp_E.Cadherin)
 ```
 
 ```{r}
 # sub4 is the cleaned dataset with all four response variables
-# columns: 50 predictors, 4 outcomes
+# columns: 50 predictors, 4 outcomes 
 sub4 = subset(sub, select = vars)
+sub4 = cbind(sub4, sub4.1)
 sub4 = cbind(sub4, sub[1937:1940])
 sub4$PR.Status = as.factor(sub4$PR.Status)
 sub4$histological.type = as.factor(sub4$histological.type)
@@ -630,21 +593,24 @@ Xtrain = sub4[-test_idx, 1:50]
 
 ```{r}
 # fit for ER.Status (SVM)
+library(e1071)
 ytest = sub4$ER.Status[test_idx]
 ytrain = sub4$ER.Status[-test_idx]
-svm.fit = svm(ytrain ~., data=Xtrain,
+svm.fit = svm(ytrain ~., data=Xtrain, 
               type="C-classification", kernel="linear", scale=F, cost=1)
 table("predicted" = svm.fit$fitted, "actual" = ytrain)
+# accuracy
 pred = predict(svm.fit, newdata = Xtest)
 table("predicted" = pred, "actual" = ytest)
 ```
 
 ```{r}
 # the AUC is 0.84
+library(ROCR)
 roc = prediction(as.numeric(pred), ytest)
 performance(roc, measure = "auc")@y.values[[1]]
 
-perf = performance(roc, "tpr", "fpr")
+perf = performance(roc, "tpr", "fpr") 
 plot(perf, colorize = T)
 ```
 
@@ -652,8 +618,8 @@ plot(perf, colorize = T)
 # fit for ER.Status, random forest, AUC is 0.90
 rf.fit = randomForest(Xtrain, ytrain, 
                       ntree=500, 
-                      mtry=40, 
-                      nodesize=15, 
+                      mtry=7, 
+                      nodesize=10, 
                       samplesize=400, 
                       importance=TRUE)
 
@@ -662,12 +628,118 @@ table("predicted" = pred, "actual" = ytest)
 roc = prediction(as.numeric(pred), ytest)
 performance(roc, measure = "auc")@y.values[[1]]
 
-perf = performance(roc, "tpr", "fpr")
+perf = performance(roc, "tpr", "fpr") 
 plot(perf, colorize = T)
 ```
 
 ```{r}
-set.seed(1)
-fold_ID = sample(1:3, 705, replace = TRUE)
-fold_id = fold_ID[1:nrow(sub4)]
+set.seed(1); 
+fold_id = sample(1:3, 705, replace = TRUE)
+fold_id = fold_id[1:507]
+dim(sub4)
+
 ```
+```{r}
+AUC = c()
+set.seed(651978735)
+for (i in 1:3) {
+  tst_idx = which(fold_id == i)
+  Xtrain = sub4[-tst_idx, 1:50]
+  Xtest = sub4[tst_idx, 1:50]
+  ytrain = sub4$ER.Status[-tst_idx]
+  ytest = sub4$ER.Status[tst_idx]
+  rf.fit = randomForest(Xtrain, ytrain, 
+                      ntree=500, 
+                      mtry=40, 
+                      nodesize=15, 
+                      samplesize=400, 
+                      importance=TRUE)
+  pred = predict(rf.fit, Xtest)
+  roc = prediction(as.numeric(pred), ytest)
+  auc = performance(roc, measure = "auc")@y.values[[1]]
+  AUC = c(AUC, auc)
+}
+mean_1=mean(AUC)
+mean_1
+```
+
+
+```{r}
+# fit for PR.Status
+AUC = c()
+set.seed(651978735)
+for (i in 1:3) {
+  tst_idx = which(fold_id == i)
+  Xtrain = sub4[-tst_idx, 1:50]
+  Xtest = sub4[tst_idx, 1:50]
+  ytrain = sub4$PR.Status[-tst_idx]
+  ytest = sub4$PR.Status[tst_idx]
+  rf.fit = randomForest(Xtrain, ytrain, 
+                      ntree=500, 
+                      mtry=40, 
+                      nodesize=15, 
+                      samplesize=400, 
+                      importance=TRUE)
+  pred = predict(rf.fit, Xtest)
+  roc = prediction(as.numeric(pred), ytest)
+  auc = performance(roc, measure = "auc")@y.values[[1]]
+  AUC = c(AUC, auc)
+}
+mean_2=mean(AUC)
+mean_2
+```
+
+```{r}
+#fit for histological.type
+AUC = c()
+set.seed(651978735)
+for (i in 1:3) {
+  tst_idx = which(fold_id == i)
+  Xtrain = sub4[-tst_idx, 1:50]
+  Xtest = sub4[tst_idx, 1:50]
+  ytrain = sub4$histological.type[-tst_idx]
+  ytest = sub4$histological.type[tst_idx]
+  rf.fit = randomForest(Xtrain, ytrain, 
+                      ntree=500, 
+                      mtry=40, 
+                      nodesize=15, 
+                      samplesize=400, 
+                      importance=TRUE)
+  pred = predict(rf.fit, Xtest)
+  roc = prediction(as.numeric(pred), ytest)
+  auc = performance(roc, measure = "auc")@y.values[[1]]
+  AUC = c(AUC, auc)
+}
+mean_3=mean(AUC)
+mean_3
+```
+```{r}
+#fit for HER2.Final.Status
+AUC = c()
+set.seed(651978735)
+for (i in 1:3) {
+  tst_idx = which(fold_id == i)
+  Xtrain = sub4[-tst_idx, 1:50]
+  Xtest = sub4[tst_idx, 1:50]
+  ytrain = sub4$HER2.Final.Status[-tst_idx]
+  ytest = sub4$HER2.Final.Status[tst_idx]
+  rf.fit = randomForest(Xtrain, ytrain, 
+                      ntree=500, 
+                      mtry=40, 
+                      nodesize=15, 
+                      samplesize=400, 
+                      importance=TRUE)
+  pred = predict(rf.fit, Xtest)
+  roc = prediction(as.numeric(pred), ytest)
+  auc = performance(roc, measure = "auc")@y.values[[1]]
+  AUC = c(AUC, auc)
+}
+mean_4=mean(AUC)
+mean_4
+```
+```{r}
+#average the cross-validated AUC of all four outcomes
+mean(mean_1,mean_2,mean_3,mean_4)
+
+```
+
