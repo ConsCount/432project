@@ -1,13 +1,13 @@
 ---
 title: "Project"
 output:
-  pdf_document:
-    toc: yes
-    toc_depth: 2
   html_document:
     df_print: paged
     toc: yes
     toc_depth: '2'
+  pdf_document:
+    toc: yes
+    toc_depth: 2
 ---
 
 <style>
@@ -417,20 +417,19 @@ plot(perf, colorize = T)
 
 
 # Histological Type (hcluster and knn regression) (est 2-3 pages, pt.20)
-To establish the Modeling for histological,  We first use logistical regression, However, when we build the model, we found that the logistic model's algothrim is not coverge. The reason that this error occur, because the variable x can divide the reponse variable y into 0 and 1 perfectly. The accurate will be 100%. To solve the problem we decided to use penalized regression. Thus, we choose the modle of logistic regession with ridge pentalty.
+To establish the Modeling for histological,  We first use logistical regression, However, when we build the model, we found that the logistic model's algothrim is not coverge. The reason that this error occur, because the variable x can divide the reponse variable y into 0 and 1 perfectly. The accurate will be 100%. To solve the problem we decided to use penalized regression. Thus, we choose the modle of logistic regession with ridge penalty
 
+
+
+## Logistic Regression
+To performance 
 
 ```{r some-processing}
 y = as.factor(sub$histological.type)
-<<<<<<< HEAD
 y = ifelse(y == "infiltrating lobular carcinoma", 1, 0)
 # cleaned dataset with histological.type as response 
 sub3 = cbind(rs_transformed, cn, mu, pp_normalized, y) 
 dim(sub3)
-=======
-y = as.factor(ifelse(y == "infiltrating lobular carcinoma", 1, 0))
-sub3 = cbind(rs, cn, mu, pp, y) # cleaned dataset with PR.status as response 
->>>>>>> 9c5085e16cb2950f3b6999b762e411663f8f1b4c
 ```
 
 ```{r split-train-test-data}
@@ -439,44 +438,57 @@ n = dim(sub)[1]
 test_size = as.integer(0.25 * n)
 test_idx = sample(1:n, test_size) # 25% of the sample size 
 
-Xtest = sub3[test_idx, -ncol(sub3)]
-Xtrain = sub3[-test_idx, -ncol(sub3)]
+Xtest = sub3[test_idx, -ncol(sub2)]
+Xtrain = sub3[-test_idx, -ncol(sub2)]
 
-ytest = sub3[test_idx, ncol(sub3)]
-ytrain = sub3[-test_idx, ncol(sub3)]
+ytest = sub3[test_idx, ncol(sub2)]
+ytrain = sub3[-test_idx, ncol(sub2)]
 ```
 
-```{r logistic regression}
+## logistic regression with ridge penalty and 10 fold corss validation.
+
+```{r logistic regression with ridge penalty and 10 fold corss validation}
 library(glmnet)
 fit1 = cv.glmnet(x = data.matrix(Xtrain), y = ytrain, nfolds = 10, 
                  type.measure = "auc", family = "binomial")
-fit2 = glmnet(x = data.matrix(Xtrain),y = ytrain, family = binomial,
-             alpha = 0)
-lam = coef(fit2, s = fit1$lambda.min)
-pred = predict(fit2, newx = data.matrix(Xtest), type = "response", s = fit1$lambda.min)
+pred = predict(fit1, newx = data.matrix(Xtest), type = "response", s = fit1$lambda.min)
 hist(pred)
 ```
 
-```{r}
-table(as.factor(pred > 0.2),ytest)
-acc = (111+4)/(97+1+18+10)
+```{r accurate, include = FALSE}
+table(as.factor(pred > 0.5),ytest)
+acc = (115+6)/length(ytest)
 acc
 ```
-
-```{r}
+```{r calculate auc}
 roc2 <- prediction(pred, ytest)
 # calculates the ROC curve
 perf2 <- performance(roc2,"tpr","fpr")
 plot(perf2,colorize=TRUE)
 performance(roc2, measure = "auc")@y.values[[1]]
 ```
+## hcluster clustering 
 
 ```{r perform kmean}
-sub4 = sub3[,-1099]
-kmeanfit <- kmeans(sub4, 2)
-table((kmeanfit$cluster - 1),sub3$y)
-acc = (394 + 2)/ nrow(sub4)
-acc
+# sub4 = sub3[,-1099]
+# kmeanfit <- kmeans(sub4, 2)
+# table((kmeanfit$cluster - 1),sub3$y)
+
+data1 = dist(sub3)
+complete_hc <- hclust(data1,method = "complete")
+# plot(complete_hc)
+single_hc <- hclust(data1,method = "single")
+# plot(single_hc)
+average_hc <- hclust(data1,method = "average")
+# plot(average_hc)
+clusters = cutree(complete_hc, k = 2)
+table((clusters - 1),sub3$y)
+
+roc2 <- prediction((clusters - 1), sub3$y)
+# calculates the ROC curve
+perf2 <- performance(roc2,"tpr","fpr")
+plot(perf2,colorize=TRUE)
+performance(roc2, measure = "auc")@y.values[[1]]
 ```
 
 # Variable Selection for All Outcomes (random forest?) (est. 2-3 pages. pt.20)
