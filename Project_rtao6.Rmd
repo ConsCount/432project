@@ -289,6 +289,7 @@ for (i in 1:10) {
 }
 ```
 
+\newpage
 # Modeling `PR Status` (est. 2-3 pages, pt.20)
 
 Before modeling, we split the train and test datasets. We used 25% of the samples (126) for testing and 75% of the samples for trianing (381). 
@@ -382,7 +383,27 @@ confusion_table
 
 
 ## Random Forest   
-Random forests are another classification model that is less vulnerable to "the curse of dimensionality". Since there were many parameters that needed to be tuned, we again utilized `caret` package to cross validate the model. 
+Random forests are another classification model that is less vulnerable to "the curse of dimensionality". Since there were many parameters that needed to be tuned, we again utilized `caret` package to cross validate the model.   
+
+Before applying cross-validation, we should first determine `num.trees`, because it could not be included in the grid of parameters. Therefore, we first fitted a random forest using the `randomForest()` method with `ntree = 1000`, and plotted the error against trees. 
+
+```{r, include=FALSE}
+library(randomForest)
+set.seed(651978735)
+rf.fit = randomForest(Xtrain, ytrain, 
+                      ntree=1000, 
+                      mtry=20, 
+                      nodesize=5, 
+                      samplesize=400, 
+                      importance=TRUE)
+```
+
+As the plot demonstrated, the error stopped decreasing after the number of trees reached around 500. Thus, `ntree = 500` should be sufficient for training. 
+```{r, echo=FALSE, fig.align="center", out.width="80%"}
+plot(rf.fit)
+```
+
+In a 5-fold cross-validation, we tuned `mtry` and `min.node.size`. The output showed that the best parameters were `mtry = 40` and `min.node.size = 15` when `num.trees = 500` according to the test accuracy.   
 
 ```{r, include=FALSE}
 library(ranger)
@@ -396,19 +417,20 @@ rf.cv.fit = train(y ~., data=train_data,
                method="ranger",
                trControl=train_control, 
                tuneGrid=grid,
-               num.trees=1000,
+               num.trees=500,
                respect.unordered.factors="partition")
 ```
-
-In a 5-fold cross-validation, we tuned `mtry` and `min.node.size`. In addition, we found that `num.trees` was also influential to both the parameter tuning and the test accuracy. Thus, we manually tuned the number of trees and chose the best value by looking at the test accuracy. The output showed that the best parameters were `mtry = 40` and `min.node.size = 15` when `num.trees = 1000` according to the test accuracy.   
 
 ```{r, echo=FALSE}
 rf.cv.fit$bestTune
 rf.cv.fit$results
 ```
 
-The confusion matrix and the highest test accuracy, 0.9048, were shown here. 
+```{r, echo=FALSE}
+plot(rf.cv.fit)
+```
 
+The confusion matrix and the highest test accuracy, 0.9048, were shown here. 
 ```{r, echo=FALSE}
 pred = predict(rf.cv.fit, Xtest)
 confusion_table = table("predicted" = pred, "actual" = ytest)
@@ -428,8 +450,6 @@ confusion_table
 
 # Histological Type (hcluster and knn regression) (est 2-3 pages, pt.20)
 To establish the Modeling for histological,  We first use logistical regression, However, when we build the model, we found that the logistic model's algothrim is not coverge. The reason that this error occur, because the variable x can divide the reponse variable y into 0 and 1 perfectly. The accurate will be 100%. To solve the problem we decided to use penalized regression. Thus, we choose the modle of logistic regession with ridge penalty
-
-
 
 ## Logistic Regression
 To performance 
