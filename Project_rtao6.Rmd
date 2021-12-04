@@ -439,11 +439,11 @@ n = dim(sub)[1]
 test_size = as.integer(0.25 * n)
 test_idx = sample(1:n, test_size) # 25% of the sample size 
 
-Xtest = sub3[test_idx, -ncol(sub2)]
-Xtrain = sub3[-test_idx, -ncol(sub2)]
+Xtest = sub3[test_idx, -ncol(sub3)]
+Xtrain = sub3[-test_idx, -ncol(sub3)]
 
-ytest = sub3[test_idx, ncol(sub2)]
-ytrain = sub3[-test_idx, ncol(sub2)]
+ytest = sub3[test_idx, ncol(sub3)]
+ytrain = sub3[-test_idx, ncol(sub3)]
 ```
 
 ```{r logistic regression}
@@ -462,6 +462,7 @@ table(as.factor(pred > 0.2),ytest)
 acc = (111+4)/(97+1+18+10)
 acc
 ```
+
 ```{r}
 roc2 <- prediction(pred, ytest)
 # calculates the ROC curve
