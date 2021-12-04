@@ -1,13 +1,13 @@
 ---
 title: "Project"
 output:
+  pdf_document:
+    toc: yes
+    toc_depth: 2
   html_document:
     df_print: paged
     toc: yes
     toc_depth: '2'
-  pdf_document:
-    toc: yes
-    toc_depth: 2
 ---
 
 <style>
@@ -384,16 +384,6 @@ confusion_table
 ## Random Forest   
 Random forests are another classification model that is less vulnerable to "the curse of dimensionality". Since there were many parameters that needed to be tuned, we again utilized `caret` package to cross validate the model. 
 
-```{r, eval=FALSE}
-library(randomForest)
-rf.fit = randomForest(Xtrain, ytrain, 
-                      ntree=1000, 
-                      mtry=20, 
-                      nodesize=5, 
-                      samplesize=400, 
-                      importance=TRUE)
-```
-
 ```{r, include=FALSE}
 library(ranger)
 set.seed(651978735)
@@ -418,12 +408,6 @@ rf.cv.fit$results
 ```
 
 The confusion matrix and the highest test accuracy, 0.9048, were shown here. 
-```{r, eval=FALSE}
-pred = predict(rf.fit, Xtest)
-confusion_table = table("predicted" = pred, "actual" = ytest)
-confusion_table
-(confusion_table[1, 1] + confusion_table[2, 2]) / test_size
-```
 
 ```{r, echo=FALSE}
 pred = predict(rf.cv.fit, Xtest)
@@ -432,7 +416,7 @@ confusion_table
 (confusion_table[1, 1] + confusion_table[2, 2]) / test_size
 ```
 
-```{r, eval=FALSE}
+```{r, eval=FALSE, include=FALSE}
 # library(ROCR)
 # roc = prediction(as.numeric(pred), ytest)
 # performance(roc, measure = "auc")@y.values[[1]]
@@ -485,13 +469,16 @@ table(as.factor(pred > 0.5),ytest)
 acc = (115+6)/length(ytest)
 acc
 ```
+
 ```{r calculate auc}
+library(ROCR)
 roc2 <- prediction(pred, ytest)
 # calculates the ROC curve
 perf2 <- performance(roc2,"tpr","fpr")
 plot(perf2,colorize=TRUE)
 performance(roc2, measure = "auc")@y.values[[1]]
 ```
+
 ## hcluster clustering 
 
 ```{r perform kmean}
@@ -519,8 +506,26 @@ performance(roc2, measure = "auc")@y.values[[1]]
 # Variable Selection for All Outcomes (random forest?) (est. 2-3 pages. pt.20)
 
 Using Random Forest, select the most important 50 variables, and make predictions based on these variables. 
+
+```{r, include=FALSE}
+library(randomForest)
+rf.fit = randomForest(Xtrain, ytrain, 
+                      ntree=1000, 
+                      mtry=20, 
+                      nodesize=5, 
+                      samplesize=400, 
+                      importance=TRUE)
+```
+
+```{r, include=FALSE}
+pred = predict(rf.fit, Xtest)
+confusion_table = table("predicted" = pred, "actual" = ytest)
+confusion_table
+(confusion_table[1, 1] + confusion_table[2, 2]) / test_size
+```
+
 ```{r}
-impt = importance(rf.fit)[order(importance(rf.fit)[,3], decreasing=TRUE),][1:50,]
+impt = rf.fit$importance[order(rf.fit$importance[,3], decreasing=TRUE),][1:50,]
 vars = rownames(impt)
 ```
 
@@ -549,9 +554,8 @@ pred = predict(svm.fit, newdata = Xtest)
 table("predicted" = pred, "actual" = ytest)
 ```
 
-
 ```{r}
-# library(ROCR)
+library(ROCR)
 roc = prediction(as.numeric(pred), ytest)
 performance(roc, measure = "auc")@y.values[[1]]
 
