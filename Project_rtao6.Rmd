@@ -27,6 +27,7 @@ background-color: #CCDDFF;
 
 # Literature Review(est. 1 page, pt.10)
 
+\newpage
 # Summary Statistics and Data Preprocessing (est. 1 -2 pages, pt.10)
 
 ## Data Overview  
@@ -267,7 +268,7 @@ for (i in 1:ncol(pp)) {
 }
 ```
 
-```{r, echo=FALSE, fig.show="hold", fig.align="center", out.width="40%"}
+```{r, echo=FALSE, fig.show="hold", fig.align="center", out.width="30%"}
 hist(pp[,1], 
      main = paste("Before Normalization", names(pp)[1]))
 hist(pp_normalized[,1], 
@@ -275,7 +276,7 @@ hist(pp_normalized[,1],
 ```
 
 ## Categorical Variables  
-```{r}
+```{r, out.height="50%"}
 par(mfrow=c(2, 2))
 barplot(table(sub$PR.Status))
 barplot(table(sub$ER.Status))
@@ -364,6 +365,11 @@ svm.radial$bestTune
 svm.radial$results
 ```
 
+```{r, echo=FALSE, fig.align="center", out.width="60%"}
+plot(svm.radial)
+```
+
+
 We made predictions for the test data, and printed the confusion table below. The accuracy was 0.9048. Thus, the linear SVM performed quite well. 
 ```{r, echo=FALSE}
 pred = predict(svm.linear, newdata = Xtest)
@@ -390,7 +396,8 @@ rf.fit = randomForest(Xtrain, ytrain,
 
 As the plot demonstrated, the error stopped decreasing after the number of trees reached around 500. Thus, `ntree = 500` should be sufficient for training. 
 ```{r, echo=FALSE, fig.align="center", out.width="80%"}
-plot(rf.fit)
+plot(rf.fit, 
+     main="Random Forest ntree Selection")
 ```
 
 In a 5-fold cross-validation, we tuned `mtry` and `min.node.size`. The output showed that the best parameters were `mtry = 40` and `min.node.size = 15` when `num.trees = 500` according to the test accuracy.   
@@ -417,7 +424,7 @@ rf.cv.fit$results
 ```
 
 ```{r, echo=FALSE, fig.align="center", out.width="80%"}
-plot(rf.cv.fit)
+plot(rf.cv.fit, xlab="Number of Randomly Selected Predictors")
 ```
 
 The confusion matrix and the highest test accuracy, 0.9048, were shown here. 
