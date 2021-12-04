@@ -68,12 +68,15 @@ table(brca$histological.type)
 ```
 
 Then the dataset `sub` had 507 observations and 1940 features. 
-```{r}
+```{r, include=FALSE}
 # sub is the dataset containing no missing values 
 sub = brca[(brca$PR.Status == "Positive" | brca$PR.Status == "Negative") & 
            (brca$ER.Status == "Positive" | brca$ER.Status == "Negative") & 
            (brca$HER2.Final.Status == "Positive" | 
             brca$HER2.Final.Status == "Negative"),]
+```
+
+```{r}
 dim(sub)
 ```
 
@@ -276,21 +279,29 @@ hist(pp_normalized[,1],
 ```
 
 ## Categorical Variables  
-```{r, out.height="50%"}
-par(mfrow=c(2, 2))
-barplot(table(sub$PR.Status))
-barplot(table(sub$ER.Status))
-barplot(table(sub$HER2.Final.Status))
-barplot(table(sub$histological.type), names.arg = c("IDC", "ILC"))
+All four outcomes were imbalanced, among which `histological.type` was the most imbalanced. Only 10% of the responses were IDC. In some cases, such imbalance would cause models to learn nothing from the minority class. If our data also suffer from problems like this, we should resolve the imbalance by techniques like undersampling. However, if our models perform well enough on current data, no further action needs to be taken. 
+
+Fortunately, we trained our models first, and found the models obtained high enough accuracy and AUC scores. Therefore, we decided to not address imbalanced outcomes. 
+
+```{r, echo=FALSE}
+table(sub$PR.Status) / nrow(sub)
+table(sub$ER.Status) / nrow(sub)
+table(sub$histological.type) / nrow(sub)
+table(sub$HER2.Final.Status) / nrow(sub)
 ```
 
-```{r, include=FALSE}
-for (i in 1:10) {
-  barplot(table(cn[,i]), main=names(cn)[i], ylim=c(0, 300))
-}
+
+```{r, echo=FALSE, out.width="30%", fig.show="hold", fig.align="center"}
+# par(mfrow=c(2, 1))
+# barplot(table(sub$PR.Status))
+# barplot(table(sub$ER.Status))
+# barplot(table(sub$HER2.Final.Status))
+barplot(table(sub$histological.type),
+        ylim=c(0, 500),
+        main="Histological Type",
+        names.arg = c("IDC", "ILC"))
 ```
 
-\newpage
 # Modeling `PR Status` (est. 2-3 pages, pt.20)
 
 Before modeling, we split the train and test datasets. We used 25% of the samples (126) for testing and 75% of the samples for trianing (381). 
