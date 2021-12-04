@@ -533,15 +533,21 @@ Based on the ROC and output given above, AUC is 0.915415, which is a good result
 
 ## kmean clustering 
 
+We decided to using kmean clustering as our second model. Since, we known that Kmean clustering does not have a good performace on high demision data .Thus, we decided to use dimensionality reduction technique such as principal components analysis.
+
 ```{r perform kmean}
 # sub4 = sub3[,-1099]
 # kmeanfit <- kmeans(sub4, 2)
 # table((kmeanfit$cluster - 1),sub3$y)
-pca <- prcomp(sub3[, -ncol(sub3)])
+pca <- prcomp(scale(sub3[, -ncol(sub3)]))
+str(pca)
+```
 
+
+```{r}
 plot(pca, type = "l")
 
-comp = pca$x[,1:4]
+comp = pca$x[,1:3]
 kfit = kmeans(comp,2)
 clusters = kfit$cluster - 1
 table(clusters,sub3$y)
