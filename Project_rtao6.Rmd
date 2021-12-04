@@ -31,7 +31,6 @@ library(ranger)
 library(ROCR)
 ```
 
-
 # Project Description (est. 1 page, pt. 5)
 
 # Literature Review
@@ -394,7 +393,6 @@ svm.radial$bestTune
 plot(svm.radial)
 ```
 
-
 We made predictions for the test data, and printed the confusion table below. The accuracy was 0.9048. Thus, the linear SVM performed quite well. 
 ```{r, echo=FALSE}
 pred = predict(svm.linear, newdata = Xtest)
@@ -622,8 +620,8 @@ plot(perf, colorize = T)
 # fit for ER.Status, random forest, AUC is 0.90
 rf.fit = randomForest(Xtrain, ytrain, 
                       ntree=500, 
-                      mtry=7, 
-                      nodesize=10, 
+                      mtry=40, 
+                      nodesize=15, 
                       samplesize=400, 
                       importance=TRUE)
 
@@ -636,4 +634,30 @@ perf = performance(roc, "tpr", "fpr")
 plot(perf, colorize = T)
 ```
 
+```{r}
+set.seed(1)
+fold_ID = sample(1:3, 705, replace = TRUE)
+fold_id = fold_ID[1:nrow(sub4)]
+```
+
+```{r}
+auc = c()
+for (i in c(1, 2, 3)) {
+  tst_idx = which(fold_id == i)
+  Xtest = sub4[tst_idx, 1:50]
+  Xtrain = sub4[-tst_idx, 1:50]
+  ytest = sub4$ER.Status[tst_idx]
+  ytrain = sub4$ER.Status[-tst_idx]
+  
+  rf.fit = randomForest(Xtrain, ytrain, 
+                      ntree=500, 
+                      mtry=40, 
+                      nodesize=15, 
+                      samplesize=400, 
+                      importance=TRUE)
+  pred = predict(rf.fit, Xtest)
+  roc = prediction(as.numeric(pred), ytest)
+  auc = c(auc, performance(roc, measure = "auc")@y.values[[1]])
+}
+```
 
