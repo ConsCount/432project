@@ -35,8 +35,7 @@ library(ROCR)
 library(rpart)
 ```
 
-# Project description and summary 
-
+# Project Description and Summary 
 The World Health Organization’s International Agency for Research on Cancer (IARC) released the latest global cancer data, showing that in terms of cancer distribution types, the number of new cases of breast cancer in 2020 will reach 2.26 million, surpassing lung cancer (2.2 million) for the first time, becoming “the world’s number one cancer". Thus, breast cancer classification is a problem worth solving. In the project, we applied what we learned in STAT 432 to analyze a breast cancer dataset.
 
 The dataset `BRCA Multi-Omics (TCGA)` can be found [on Kaggle](https://www.kaggle.com/samdemharter/brca-multiomics-tcga/version/3?select=data.csv). For the project, we read literature, applied data preprocessing, predicted outcomes `PR.Status` and `histological.type` using five different models. At last, we selected 50 most important input variables to make predictions of all four outcomes.  
