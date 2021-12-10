@@ -520,7 +520,7 @@ table(logistic.fit$fitted.values > 0.5, sub3$y)
 
 
 
-## Logistic Regression with ridge penalty and corss validation.
+## Logistic Regression with ridge penalty and cross validation.
 
 
 The above model is obviously not correct. Thus, we decided to use penalized regression and cross validation. Thus, we are going to perform a logistic model with ridge penalty and 10-fold cross validation. Since, the Logistic Regression Model will not return value with 0 and 1 Thus, we decided to choose the cut-off value based on the distribution of the predict result. Thus, we plot the histogram of the prediction result. 
