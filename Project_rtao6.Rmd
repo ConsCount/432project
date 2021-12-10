@@ -1,5 +1,6 @@
 ---
 title: "STAT 432 Final Project"
+author : "Ruining Tao, Qianjiao Wang, Zhan shi"
 output:
   pdf_document:
     toc: yes
@@ -31,22 +32,42 @@ library(ranger)
 library(ROCR)
 ```
 
-# Project Description (est. 1 page, pt. 5)
+# Project description and summary 
+
+The World Health Organization’s International Agency for Research on Cancer (IARC) released the latest global cancer data, showing that in terms of cancer distribution types, the number of new cases of breast cancer in 2020 will reach 2.26 million, surpassing lung cancer (2.2 million) for the first time, becoming “the world’s number one cancer". Thus, in this project, we are going to use what we learned in this semester to analyze a breast cancer data.
+
+In this report, we are going analysis the data `BRCA Multi-Omics (TCGA)`. This data can be found [here](https://www.kaggle.com/samdemharter/brca-multiomics-tcga/version/3?select=data.csv). In this report, we are going to predict four variables`PR.Status`, `ER.Status`, `HER2.Final.Status` and `histological.type`. Since, we have a raw data. Thus, we need to clean the data first. First, we are going to remove all missing data. Since, most of them are not continuous data. then we will check the collinearity between each variables. Next, we must check the distribution for each response variable and decided to modified them or not. After dealing with data, we have to find the model can help us to predict the result. We will use SVM and random forest to predict `PR.Status`, and use logistic regression and K-means clustering to predict `histological.type`. Since, we are dealing with a high dimensional data, thus some model may not be able have a good performance such as K-means clustering. Hence, we change the model to Classification Tree which has better performance on high dimensional data.Next steps will be using model to train and predict result with selected 50 variables. In this section, we use random forest as our model. 
+
 
 # Literature Review
 
+## Supervised Risk Predictor of Breast Cancer Based on Intrinsic Subtypes
 
-The title of our first relevant paper is Tumor characteristics and patient outcomes are similar between invasive lobular and mixed invasive ductal/lobular breast cancers but differ from pure invasive ductal breast cancers. A total of 4,336 individuals with IDC, ILC, and mixed breast tumors were detected between 1996 and 2006. 
+A rigorous examination of 817 breast tumor samples confirms invasive lobular carcinoma as a molecularly separate illness with discrete genetic traits, offering critical information for patient classification that may allow for better informed clinical follow-up.  
 
-The Kaplan-Meier method was used extensively in this paper, and survival curves were constructed using it.Chi-square tests and Fisher's exact tests were used to compare clinical variables.  The correlations between patient and tumor variables were summarized using contingency tables and investigated using Fisher's exact test as among three histologic groups. Patients with ILC and mixed breast cancers were more probable as IDC patients to have tumors that were estrogen receptor and progesterone receptor positive (P < 0.001 and P< 0.05, correspondingly). 
+We concluded from this paper that three ILC transcriptional subtypes linked with survival differences were identified using proliferation and immune-related markers. Cases with mixed IDC/ILC were molecularly classed as ILC-like or IDC-like, with no actual hybrid traits revealed. This multimodal molecular atlas throws fresh insight on the genetic foundations of ILC and suggests potential therapeutic treatments. This research reveals several genetic mutations that distinguish ILC from IDC, proving at the molecular level that ILC is an unique breast cancer subtype and giving new insights into ILC tumor biology and treatment alternatives.
+
+
+## Comprehensive Molecular Portraits of Invasive Lobular Breast Cancer
+
+Using microarray and quantitative reverse transcriptase polymerase chain reaction data from 189 prototype samples, a 50-gene subtype predictor was constructed. Prognosis was determined using test sets from 761 individuals, and pathologic complete response (pCR) after a taxane plus anthracycline regimen was determined using test sets from 133 patients.
+
+We noticed that this part of Sample Subtype Prediction is particularly valuable for our project. The reliability of categorization across three centroid-based prediction approaches was tested for the 50 gene set: Prediction Analysis of Microarray, a basic nearest centroid, and Classification of Nearest Centroid. The subtype categorization is always determined based on the closest of the five centroids. The final approach comprised of centroids built as stated for the PAM algorithm and distances calculated using Spearman's rank correlation due to its reliability in subtype categorization.
+
+
+## Tumor characteristics and patient outcomes are similar between invasive lobular and mixed invasive ductal/lobular breast cancers but differ from pure invasive ductal breast cancers
+
+Our first relevant paper has a total of 4,336 individuals with IDC, ILC, and mixed breast tumors were detected between 1996 and 2006. The Kaplan-Meier method was used extensively in this paper, and survival curves were constructed using it. Chi-squared tests and Fisher's exact tests were used to compare clinical variables.  The correlations between patient and tumor variables were summarized using contingency tables and investigated using Fisher's exact test as among three histologic groups. Patients with ILC and mixed breast cancers were more probable as IDC patients to have tumors that were estrogen receptor and progesterone receptor positive (P < 0.001 and P< 0.05, correspondingly). 
 
 After having read, we can conclude the following from the paper: first, despite being identified at lower clinical stages of infection, patients with IDC had the poorest long-term survival; second, individuals with ILC and "mixed" malignancies had a better prognosis than patients with IDC, despite having more advanced cancer. We were also motivated to utilize the log-rank test to estimate P values if necessary.
 
-The second research article is Infiltrating lobular carcinoma of the breast: tumor characteristics and clinical outcome. We summarize that these patients do not have improved clinical outcomes as IDC patients when ignoring the fact that ILC has a positive biologic pattern. Consequently, management decisions should be made based on the patient's and tumor's biologic characteristics, that instead of lobular histology. 
 
-About statistical methods, the clinical and biologic features of lobular and ductal carcinoma were compared by contingency tables, Chi-square tests and Fisher’s exact tests, which is similar with the method using in the first paper. To see if ILC was an independent predictive predictor for recurrence and death, researchers used multivariate analysis and Cox regression models. Tumor size, number of affected nodes, age, ER status, PgR status, DNA ploidy, S-phase, and histologic type were all considered in these analyses.
+## Infiltrating lobular carcinoma of the breast: tumor characteristics and clinical outcome
+
+From the second paper, we summarize that these patients do not have improved clinical outcomes as IDC patients when ignoring the fact that ILC has a positive biologic pattern. Consequently, management decisions should be made based on the patient's and tumor's biologic characteristics, that instead of lobular histology. About statistical methods, the clinical and biologic features of lobular and ductal carcinoma were compared by contingency tables, Chi-square tests and Fisher’s exact tests, which is similar with the method using in the first paper. To see if ILC was an independent predictive predictor for recurrence and death, researchers used multivariate analysis and Cox regression models. Tumor size, number of affected nodes, age, ER status, PgR status, DNA ploidy, S-phase, and histologic type were all considered in these analyses.
 
 The findings of this huge dataset have shown that ILC and IDC are distinct entities with distinctive clinical histories and biologic features, yet there are no clinically important variations in survival. At the present, both kinds of breast cancer should be treated identically, and histologic subtype (lobular or ductal) should not be regarded a determinant in therapeutic decision-making or an essential prognostic or predictive factor at diagnosis. Emerging technologies such as high throughput genome mapping and microchip cDNA expression arrays may help to uncover molecular distinctions between these different types of breast cancer.
+
 
 
 # Summary Statistics and Data Preprocessing
@@ -503,7 +524,7 @@ table(logistic.fit$fitted.values > 0.5, sub3$y)
 ## Logistic Regression with ridge penalty and corss validation.
 
 
-The above model is obviously not correct. Thus, we decided to use penalized regression and cross validation. Thus, we are going to perform a logistic model with ridge penalty and 10-fold cross validation. Since, the Logistic Regresion Model will not return value with 0 and 1 Thus, we decided to choose the cut-off value based on the distribution of the predict result. Thus, we plot the histogram of the prediction result. 
+The above model is obviously not correct. Thus, we decided to use penalized regression and cross validation. Thus, we are going to perform a logistic model with ridge penalty and 10-fold cross validation. Since, the Logistic Regression Model will not return value with 0 and 1 Thus, we decided to choose the cut-off value based on the distribution of the predict result. Thus, we plot the histogram of the prediction result. 
 
 ```{r logistic regression with ridge penalty and 10 fold corss validation, echo = FALSE, message=FALSE ,fig.align="center", out.width="80%"}
 library(glmnet)
@@ -554,7 +575,7 @@ perf2 <- performance(roc2,"tpr","fpr")
 plot(perf2,colorize=TRUE)
 performance(roc2, measure = "auc")@y.values[[1]]
 ```
-However, the result of the kmeans did not gives us a good result. The value of AUC is 0.4149453. This is not a good result. Therefore, we believe that k means is not suitable for analyzing and predicting this set of data. Then, we are looking for other method. Next, we are going to perform the method called Recursive Partitioning and Regression Tree.
+However, the result of the kmeans did not gives us a good result. The value of AUC is 0.4149453. This is not a good result. Therefore, we believe that k means is not suitable for analyzing and predicting this set of data. Then, we are looking for other method. Next, we are going to perform the method called Classficiation Tree.
 
 ## Classficiation Tree 
 
@@ -774,6 +795,5 @@ mean_4
 ```
 ```{r}
 #average the cross-validated AUC of all four outcomes
-mean(mean_1,mean_2,mean_3,mean_4)
-
+mean(c(mean_1,mean_2,mean_3,mean_4))
 ```
